@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeerDrop · 点对点直连传输</title>
+<style>
+  :root {
+    --bg-1: #f7f9fc;
+    --bg-2: #eef2f8;
+    --glow: #e6efff;
+
+    --surface: #ffffff;
+    --surface-2: #f7f9fc;
+    --field: #f5f7fb;
+
+    --line: rgba(16, 24, 40, .09);
+    --line-strong: rgba(16, 24, 40, .16);
+
+    --text: #1a2230;
+    --text-2: #556275;
+    --dim: #8a94a6;
+
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eef4ff;
+    --accent-line: #c7d7fe;
+
+    --ok: #12b76a;
+    --warn: #f79009;
+    --err: #f04438;
+
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .05);
+    --shadow-md: 0 4px 12px rgba(16, 24, 40, .06), 0 2px 6px rgba(16, 24, 40, .04);
+    --shadow-lg: 0 18px 40px rgba(16, 24, 40, .12), 0 6px 14px rgba(16, 24, 40, .06);
+
+    --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background:
+      radial-gradient(1100px 520px at 50% -260px, var(--glow) 0%, transparent 62%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 40px 18px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  /* ── Header ── */
+  header { text-align: center; margin-bottom: 26px; }
+  .brand {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: var(--mono); font-weight: 700;
+    font-size: 26px; letter-spacing: -.4px;
+  }
+  .brand .mark {
+    display: inline-grid; place-items: center;
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(140deg, var(--accent), #6d9bff);
+    color: #fff; font-size: 20px;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, .35);
+  }
+  .brand .peer { color: var(--text); }
+  .brand .drop { color: var(--accent); }
+  header p {
+    color: var(--text-2); font-size: 13.5px; line-height: 1.6;
+    margin-top: 12px; max-width: 460px; margin-left: auto; margin-right: auto;
+  }
+
+  /* ── Status bar ── */
+  #statusBar {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text-2);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 9px 16px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+  .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--dim); flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(0,0,0,0);
+    transition: background .3s, box-shadow .3s;
+  }
+  .dot.connecting { background: var(--warn); animation: pulse 1.1s infinite; }
+  .dot.connected { background: var(--ok); box-shadow: 0 0 0 4px rgba(18, 183, 106, .18); }
+  .dot.failed { background: var(--err); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(247,144,9,.35);} 60% { box-shadow: 0 0 0 6px rgba(247,144,9,0);} }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-md);
+  }
+  .card h2 {
+    font-size: 15px; font-weight: 650; letter-spacing: -.2px;
+    margin-bottom: 4px;
+  }
+  .card .sub { color: var(--text-2); font-size: 13px; line-height: 1.6; margin-bottom: 18px; }
+  .card .sub:last-child { margin-bottom: 0; }
+  .hidden { display: none !important; }
+
+  /* ── Buttons ── */
+  button {
+    font-family: var(--sans); font-size: 14px; font-weight: 550;
+    border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--text);
+    padding: 10px 18px;
+    transition: transform .12s, box-shadow .15s, background .15s, border-color .15s;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent-line); box-shadow: var(--shadow-sm); }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent); color: #fff;
+    border-color: transparent; font-weight: 600;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, .28);
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 8px 20px rgba(37, 99, 235, .34); }
+  button:focus-visible { outline: 3px solid var(--accent-line); outline-offset: 2px; }
+
+  /* ── Role picker ── */
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .role-card {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+    text-align: left; padding: 20px; border-radius: 14px;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .role-card:hover { border-color: var(--accent-line); background: var(--accent-soft); box-shadow: var(--shadow-md); }
+  .role-card .r-icon {
+    display: grid; place-items: center;
+    width: 40px; height: 40px; border-radius: 11px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--accent-line); font-size: 20px;
+  }
+  .role-card .r-title { font-size: 15px; font-weight: 650; }
+  .role-card .r-sub { font-size: 12.5px; color: var(--text-2); line-height: 1.5; font-weight: 400; }
+
+  /* ── Connection code ── */
+  .code-cells { display: flex; gap: 12px; justify-content: center; margin: 6px 0 4px; }
+  .code-cell, .code-cell-input {
+    width: 66px; height: 82px;
+    font-family: var(--mono); font-size: 40px; font-weight: 700;
+    text-align: center; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--field);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+  }
+  .code-cell {
+    display: grid; place-items: center; line-height: 1;
+    transition: transform .18s;
+  }
+  #codeOut.ready .code-cell { animation: pop .28s ease both; }
+  #codeOut.ready .code-cell:nth-child(2) { animation-delay: .05s; }
+  #codeOut.ready .code-cell:nth-child(3) { animation-delay: .1s; }
+  #codeOut.ready .code-cell:nth-child(4) { animation-delay: .15s; }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .code-cell-input { color: var(--text); caret-color: var(--accent); padding: 0; }
+  .code-cell-input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+  .code-cells.shake { animation: shake .4s; }
+  @keyframes shake { 10%,90%{transform:translateX(-2px)} 30%,70%{transform:translateX(5px)} 50%{transform:translateX(-6px)} }
+
+  .code-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  .copy-btn { display: inline-flex; align-items: center; gap: 7px; }
+  .copy-btn.copied { color: var(--ok); border-color: rgba(18,183,106,.4); }
+
+  .backlink {
+    display: inline-block; margin-top: 16px;
+    background: none; border: none; box-shadow: none;
+    color: var(--dim); font-size: 12.5px; padding: 4px 2px;
+  }
+  .backlink:hover { color: var(--accent); border: none; box-shadow: none; }
+
+  /* ── Chat ── */
+  #chatLog {
+    height: 340px; overflow-y: auto;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    margin-bottom: 14px;
+  }
+  #chatLog::-webkit-scrollbar { width: 8px; }
+  #chatLog::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+
+  .msg {
+    max-width: 78%; padding: 9px 13px; border-radius: 14px;
+    font-size: 14px; line-height: 1.55; word-break: break-word; white-space: pre-wrap;
+  }
+  .msg.me {
+    align-self: flex-end; background: var(--accent); color: #fff;
+    border-bottom-right-radius: 5px;
+  }
+  .msg.peer {
+    align-self: flex-start; background: var(--surface); border: 1px solid var(--line);
+    border-bottom-left-radius: 5px; box-shadow: var(--shadow-sm);
+  }
+  .msg.sys {
+    align-self: center; color: var(--dim); font-size: 11.5px;
+    font-family: var(--mono); background: none; padding: 2px 8px; max-width: 100%;
+  }
+
+  .file-card { display: flex; align-items: center; gap: 12px; min-width: 210px; }
+  .file-card .f-icon {
+    display: grid; place-items: center; flex-shrink: 0;
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--accent-soft); font-size: 19px;
+  }
+  .msg.me .file-card .f-icon { background: rgba(255,255,255,.22); }
+  .file-card .f-body { flex: 1; min-width: 0; }
+  .file-card .f-name { font-size: 13.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-card .f-label { font-size: 11.5px; opacity: .82; margin-top: 2px; }
+  .file-card .f-label a { color: inherit; font-weight: 600; text-decoration: underline; }
+  .msg.peer .file-card .f-label a { color: var(--accent); }
+  .progress { height: 5px; border-radius: 3px; margin-top: 7px; overflow: hidden; background: rgba(16,24,40,.1); }
+  .msg.me .progress { background: rgba(255,255,255,.3); }
+  .progress > div { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width .12s; }
+  .msg.me .progress > div { background: #fff; }
+
+  /* ── Composer ── */
+  #composer { display: flex; gap: 10px; align-items: center; }
+  .icon-btn {
+    display: grid; place-items: center; flex-shrink: 0;
+    width: 42px; height: 42px; padding: 0; font-size: 18px; border-radius: 11px;
+    background: var(--field); border: 1px solid var(--line); color: var(--text-2);
+  }
+  .icon-btn:hover { color: var(--accent); }
+  #chatInput {
+    flex: 1; min-width: 0;
+    background: var(--field); border: 1px solid var(--line);
+    border-radius: 11px; color: var(--text);
+    padding: 11px 14px; font-size: 14px; font-family: var(--sans);
+  }
+  #chatInput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  #sendBtn { height: 42px; }
+  .composer-hint { color: var(--dim); font-size: 12px; margin-top: 12px; text-align: center; }
+  .composer-hint b { color: var(--text-2); font-weight: 600; }
+
+  /* ── Full-window drop overlay ── */
+  #dropOverlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center;
+    background: rgba(37, 99, 235, .12);
+    backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .18s;
+  }
+  #dropOverlay.show { opacity: 1; }
+  #dropOverlay .drop-inner {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 44px 60px; border-radius: 22px;
+    background: var(--surface); border: 2px dashed var(--accent);
+    box-shadow: var(--shadow-lg);
+    color: var(--accent); font-size: 17px; font-weight: 600;
+    transform: scale(.96); transition: transform .18s;
+  }
+  #dropOverlay.show .drop-inner { transform: scale(1); }
+  #dropOverlay .drop-icon { font-size: 46px; line-height: 1; }
+  #dropOverlay .drop-sub { color: var(--text-2); font-size: 13px; font-weight: 400; }
+
+  footer { text-align: center; color: var(--dim); font-size: 12px; margin-top: 26px; line-height: 1.6; }
+
+  @media (max-width: 560px) {
+    body { padding: 28px 14px 48px; }
+    .card { padding: 20px; }
+    .role-grid { grid-template-columns: 1fr; }
+    .code-cell, .code-cell-input { width: 56px; height: 72px; font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="mark">⇄</span>
+      <span><span class="peer">Peer</span><span class="drop">Drop</span></span>
+    </div>
+    <p>WebRTC 点对点直连 · 聊天与文件传输<br>直连优先，打洞失败自动降级为自建 TURN 加密中继</p>
+  </header>
+
+  <div id="statusBar">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">未连接 — 请先选择角色</span>
+  </div>
+
+  <!-- 步骤 0：选择角色 -->
+  <div class="card" id="roleSelect">
+    <h2>这台电脑是哪一方？</h2>
+    <p class="sub">发起方生成一个 4 位连接码，接收方输入即可自动建立直连。</p>
+    <div class="role-grid">
+      <button class="role-card" onclick="startAsOfferer()">
+        <span class="r-icon">↑</span>
+        <span class="r-title">我是发起方</span>
+        <span class="r-sub">生成连接码，等对方加入</span>
+      </button>
+      <button class="role-card" onclick="startAsAnswerer()">
+        <span class="r-icon">↓</span>
+        <span class="r-title">我是接收方</span>
+        <span class="r-sub">输入对方给我的连接码</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 发起方：展示 4 位码 -->
+  <div class="card hidden" id="offererPanel">
+    <h2>把这个连接码告诉对方</h2>
+    <p class="sub">对方打开同一页面，选「我是接收方」并输入此码即可。10 分钟内有效。</p>
+    <div class="code-cells" id="codeOut"></div>
+    <div class="code-actions">
+      <button class="copy-btn" id="copyBtn" onclick="copyCode()"><span>⧉</span><span id="copyLabel">复制连接码</span></button>
+    </div>
+    <div style="text-align:center"><button class="backlink" onclick="resetApp()">← 换一种角色</button></div>
+  </div>
+
+  <!-- 接收方：输入 4 位码 -->
+  <div class="card hidden" id="answererPanel">
+    <h2>输入对方给你的 4 位连接码</h2>
+    <p class="sub">逐格输入即可，填满后自动连接。也可以直接粘贴。</p>
+    <div class="code-cells" id="codeInGroup">
+      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 1 位">
+      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 2 位">
+      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 3 位">
+      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 4 位">
+    </div>
+    <div class="code-actions">
+      <button class="primary" onclick="connectWithCode()">连接</button>
+    </div>
+    <div style="text-align:center"><button class="backlink" onclick="resetApp()">← 换一种角色</button></div>
+  </div>
+
+  <!-- 聊天 + 文件传输 -->
+  <div class="card hidden" id="chatPanel">
+    <h2>直连会话</h2>
+    <div id="chatLog"></div>
+    <div id="composer">
+      <button class="icon-btn" id="attachBtn" title="发送文件" aria-label="发送文件">📎</button>
+      <input id="chatInput" placeholder="输入消息，回车发送…" autocomplete="off"
+             onkeydown="if(event.key==='Enter')sendChat()">
+      <button class="primary" id="sendBtn" onclick="sendChat()">发送</button>
+    </div>
+    <p class="composer-hint">把文件拖到窗口<b>任意位置</b>即可发送，或点击 <b>📎</b> 选择文件</p>
+    <input type="file" id="fileInput" class="hidden" multiple>
+  </div>
+</div>
+
+<!-- 拖拽文件时全窗口提示 -->
+<div id="dropOverlay">
+  <div class="drop-inner">
+    <div class="drop-icon">⬇</div>
+    <div>松开即可发送文件</div>
+    <div class="drop-sub">通过 P2P 直连传给对方，不经过服务器</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const CHUNK_SIZE = 16 * 1024;          // 16KB，兼容性最好的 DataChannel 块大小
+const BUFFER_HIGH = 4 * 1024 * 1024;   // 发送缓冲高水位 4MB
+const BUFFER_LOW  = 1 * 1024 * 1024;   // 低于 1MB 继续发
+
+const SIGNAL = '/api';                                        // 同域信令服务，由 Nginx 转发到 signal 容器
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';          // 连接码字母表，去掉易混淆的 I/L/O/0/1
+
+let pc = null;          // RTCPeerConnection
+let dc = null;          // RTCDataChannel
+let incoming = null;    // 接收中的文件 { meta, chunks, received, card }
+let myCode = '';        // 发起方生成的连接码
+let connecting = false; // 接收方是否已发起连接，避免重复触发
+const sendQueue = [];
+let sendingFiles = false;
+
+const $ = id => document.getElementById(id);
+
+// ───────────────────────── 连接码压缩 ─────────────────────────
+// 完整 SDP 里绝大部分是固定模板，真正因人而异的只有 ice-ufrag、ice-pwd、
+// DTLS 指纹和候选地址。只传这四样，对端按模板重建，码长从 ~2000 降到 ~150。
+
+function compressSDP(desc) {
+  const sdp = desc.sdp;
+  const ufrag = sdp.match(/^a=ice-ufrag:(.+)$/m)[1];
+  const pwd = sdp.match(/^a=ice-pwd:(.+)$/m)[1];
+  const fpHex = sdp.match(/^a=fingerprint:sha-256 (.+)$/mi)[1].trim();
+  const fp = btoa(fpHex.split(':').map(h => String.fromCharCode(parseInt(h, 16))).join(''));
+  const seen = new Set();
+  const cands = [];
+  for (const m of sdp.matchAll(/^a=candidate:\S+ \d+ udp \S+ (\S+) (\d+) typ (host|srflx|relay)/gim)) {
+    const c = m[3][0] + m[1] + '~' + m[2];   // 形如 h192.168.1.5~54321
+    if (!seen.has(c)) { seen.add(c); cands.push(c); }
+  }
+  return [desc.type === 'offer' ? 'O' : 'A', ufrag, pwd, fp, cands.join(',')].join('|');
+}
+
+function expandSDP(code) {
+  const [role, ufrag, pwd, fp, candStr] = code.replace(/\s+/g, '').split('|');
+  const fpHex = [...atob(fp)].map(ch => ch.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join(':');
+  const typeMap = { h: 'host', s: 'srflx', r: 'relay' };
+  const lines = [
+    'v=0', 'o=- 0 0 IN IP4 127.0.0.1', 's=-', 't=0 0',
+    'a=group:BUNDLE 0',
+    'm=application 9 UDP/DTLS/SCTP webrtc-datachannel',
+    'c=IN IP4 0.0.0.0',
+    'a=ice-ufrag:' + ufrag,
+    'a=ice-pwd:' + pwd,
+    'a=fingerprint:sha-256 ' + fpHex,
+    'a=setup:' + (role === 'O' ? 'actpass' : 'active'),
+    'a=mid:0',
+    'a=sctp-port:5000',
+  ];
+  candStr.split(',').forEach((c, i) => {
+    const typ = typeMap[c[0]];
+    const [addr, port] = c.slice(1).split('~');
+    lines.push(`a=candidate:${i} 1 udp ${(126 - i) * 16777216} ${addr} ${port} typ ${typ}` +
+      (typ === 'host' ? '' : ' raddr 0.0.0.0 rport 0'));
+  });
+  lines.push('a=end-of-candidates', '');
+  return { type: role === 'O' ? 'offer' : 'answer', sdp: lines.join('\r\n') };
+}
+
+// ───────────────────────── 连接建立 ─────────────────────────
+
+async function createPeer() {
+  // 国内 + 国外 STUN 各备一路：挂代理时国外 STUN 拿到的是代理出口 IP（打不通洞），
+  // 国内 STUN 通常命中代理的 DIRECT 规则，能拿到真实公网出口。
+  // Google STUN 有 AAAA 记录，双栈环境能取到 IPv6 srflx，双方都有 IPv6 时免 NAT 直连
+  const iceServers = [
+    { urls: `stun:${location.hostname}:3479` },
+    { urls: 'stun:stun.miwifi.com:3478' },
+    { urls: 'stun:stun.qq.com:3478' },
+    { urls: 'stun:stun.l.google.com:19302' },
+  ];
+  // TURN 时效凭据由信令服务签发。TUN 代理等场景打不了洞时，ICE 自动降级走中继
+  const turn = await fetch(`${SIGNAL}/turn`).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (turn?.urls?.length) iceServers.push(turn);
+
+  pc = new RTCPeerConnection({ iceServers });
+  pc.onconnectionstatechange = () => {
+    const s = pc.connectionState;
+    if (s === 'connecting') setStatus('connecting', '正在打洞连接…');
+    else if (s === 'connected') onConnected();
+    else if (s === 'failed') setStatus('failed', '连接失败 — 打洞与 TURN 中继均不通，检查网络是否拦截 3479 端口');
+    else if (s === 'disconnected' || s === 'closed') setStatus('failed', '连接已断开');
+  };
+}
+
+// 等待 ICE 候选全部收集完，这样 SDP 里带上所有地址，一次复制粘贴就够
+function waitIceComplete() {
+  return new Promise(resolve => {
+    if (pc.iceGatheringState === 'complete') return resolve();
+    pc.addEventListener('icegatheringstatechange', function h() {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', h);
+        resolve();
+      }
+    });
+    setTimeout(resolve, 5000); // 兜底：5 秒后有多少算多少
+  });
+}
+
+// ───────────────────────── 信令交换（自建服务中转，只传握手信息） ─────────────────────────
+
+const roomUrl = (code, slot) => `${SIGNAL}/room/${code}/${slot}`;
+
+async function signalPut(code, slot, value) {
+  const r = await fetch(roomUrl(code, slot), { method: 'POST', body: value });
+  if (!r.ok) throw new Error('signal put ' + r.status);
+}
+
+async function signalGet(code, slot) {
+  const r = await fetch(roomUrl(code, slot));
+  return r.ok ? r.text() : null;
+}
+
+async function startAsOfferer() {
+  $('roleSelect').classList.add('hidden');
+  $('offererPanel').classList.remove('hidden');
+  renderCode('····', false);
+  await createPeer();
+  dc = pc.createDataChannel('main');
+  setupChannel(dc);
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitIceComplete();
+
+  const code = Array.from(crypto.getRandomValues(new Uint8Array(4)), b => CODE_CHARS[b % CODE_CHARS.length]).join('');
+  try { await signalPut(code, 'offer', compressSDP(pc.localDescription)); }
+  catch { return setStatus('failed', '信令服务器连不上 — 确认服务已部署、/api 可达'); }
+
+  myCode = code;
+  renderCode(code, true);
+  setStatus('connecting', '等待对方输入连接码…');
+
+  // 轮询应答，最多等 10 分钟（与房间 TTL 一致）
+  for (let i = 0; i < 400; i++) {
+    await new Promise(r => setTimeout(r, 1500));
+    if (pc.remoteDescription) return;   // 应答已设置，交给状态机
+    const answer = await signalGet(code, 'answer').catch(() => null);
+    if (answer) { await pc.setRemoteDescription(expandSDP(answer)); return; }
+  }
+  setStatus('failed', '等待超时 — 刷新页面重新生成连接码');
+}
+
+function startAsAnswerer() {
+  $('roleSelect').classList.add('hidden');
+  $('answererPanel').classList.remove('hidden');
+  codeCells[0].focus();
+}
+
+async function connectWithCode() {
+  if (connecting) return;
+  const code = getInputCode();
+  if (code.length !== 4) { shakeCode(); codeCells[code.length]?.focus(); return; }
+
+  connecting = true;
+  setInputsDisabled(true);
+  setStatus('connecting', '取回对方握手信息…');
+  const offerCode = await signalGet(code, 'offer').catch(() => null);
+  if (!offerCode) {
+    connecting = false;
+    setInputsDisabled(false);
+    shakeCode();
+    setStatus('failed', '没找到这个连接码 — 确认输入正确，且对方仍在等待');
+    return;
+  }
+
+  await createPeer();
+  pc.ondatachannel = e => { dc = e.channel; setupChannel(dc); };
+
+  await pc.setRemoteDescription(expandSDP(offerCode));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await waitIceComplete();
+
+  try { await signalPut(code, 'answer', compressSDP(pc.localDescription)); }
+  catch { return setStatus('failed', '信令服务器连不上，应答发送失败'); }
+  setStatus('connecting', '应答已送达，正在打洞直连…');
+}
+
+function onConnected() {
+  setStatus('connected', '已直连 ✓ 数据不经过任何服务器');
+  $('offererPanel').classList.add('hidden');
+  $('answererPanel').classList.add('hidden');
+  $('chatPanel').classList.remove('hidden');
+  $('chatInput').focus();
+  logSys('P2P 连接已建立');
+  // 显示实际连接路径：局域网直连 / 公网直连（IPv6 或公网 IP，免打洞）/ NAT 打洞 / TURN 中继
+  pc.getStats().then(stats => {
+    stats.forEach(r => {
+      if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) {
+        const local = stats.get(r.localCandidateId);
+        if (!local) return;
+        // 浏览器可能因 mDNS 隐私保护隐藏 host 候选地址，空地址按局域网处理
+        const addr = local.address || '';
+        const isLan = !addr || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|f[cde])/i.test(addr) || addr.endsWith('.local');
+        const kind =
+          local.candidateType === 'relay' ? 'TURN 中继' :
+          local.candidateType !== 'host'  ? 'NAT 打洞' :
+          isLan ? '局域网直连' : '公网直连（免打洞）';
+        logSys(`本机出口: ${kind}${addr ? ` (${addr.includes(':') ? '[' + addr + ']' : addr}:${local.port || ''})` : ''}`);
+        if (local.candidateType === 'relay') setStatus('connected', '已连接 ✓ 打洞未成，经自建 TURN 中继（DTLS 端到端加密）');
+      }
+    });
+  }).catch(() => {});
+}
+
+// ───────────────────────── DataChannel ─────────────────────────
+
+function setupChannel(channel) {
+  channel.binaryType = 'arraybuffer';
+  channel.bufferedAmountLowThreshold = BUFFER_LOW;
+  channel.onmessage = e => {
+    if (typeof e.data === 'string') {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'chat') addMsg(msg.text, 'peer');
+      else if (msg.type === 'file-meta') beginReceiveFile(msg);
+      else if (msg.type === 'file-end') finishReceiveFile();
+    } else {
+      receiveChunk(e.data);
+    }
+  };
+  channel.onclose = () => logSys('通道已关闭');
+}
+
+// ───────────────────────── 聊天 ─────────────────────────
+
+function sendChat() {
+  const input = $('chatInput');
+  const text = input.value.trim();
+  if (!text || !dc || dc.readyState !== 'open') return;
+  dc.send(JSON.stringify({ type: 'chat', text }));
+  addMsg(text, 'me');
+  input.value = '';
+}
+
+// ───────────────────────── 文件发送 ─────────────────────────
+
+function queueFiles(files) {
+  if (!dc || dc.readyState !== 'open') return;
+  sendQueue.push(...files);
+  processSendQueue();
+}
+
+async function processSendQueue() {
+  if (sendingFiles) return;
+  sendingFiles = true;
+  try {
+    while (sendQueue.length) await sendFile(sendQueue.shift());
+  } finally {
+    sendingFiles = false;
+  }
+}
+
+async function sendFile(file) {
+  if (!file || !dc || dc.readyState !== 'open') return;
+  dc.send(JSON.stringify({ type: 'file-meta', name: file.name, size: file.size }));
+
+  const card = addFileCard(file.name, file.size, 'me');
+  let offset = 0;
+
+  while (offset < file.size) {
+    // 背压控制：缓冲区太满就等 bufferedamountlow 事件
+    if (dc.bufferedAmount > BUFFER_HIGH) {
+      await new Promise(res => dc.addEventListener('bufferedamountlow', res, { once: true }));
+    }
+    const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
+    dc.send(chunk);
+    offset += chunk.byteLength;
+    card.progress.style.width = (offset / file.size * 100) + '%';
+  }
+  dc.send(JSON.stringify({ type: 'file-end' }));
+  card.label.textContent = `已发送 · ${fmtSize(file.size)}`;
+}
+
+// ───────────────────────── 文件接收 ─────────────────────────
+
+function beginReceiveFile(meta) {
+  incoming = {
+    meta,
+    chunks: [],
+    received: 0,
+    card: addFileCard(meta.name, meta.size, 'peer')
+  };
+}
+
+function receiveChunk(buf) {
+  if (!incoming) return;
+  incoming.chunks.push(buf);
+  incoming.received += buf.byteLength;
+  incoming.card.progress.style.width = (incoming.received / incoming.meta.size * 100) + '%';
+}
+
+function finishReceiveFile() {
+  if (!incoming) return;
+  const blob = new Blob(incoming.chunks);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = incoming.meta.name;
+  a.textContent = '点击保存';
+  incoming.card.label.textContent = `接收完成 · ${fmtSize(incoming.meta.size)} · `;
+  incoming.card.label.appendChild(a);
+  incoming = null;
+}
+
+// ───────────────────────── UI 工具 ─────────────────────────
+
+function setStatus(cls, text) {
+  const dot = $('statusDot');
+  dot.className = 'dot ' + cls;
+  $('statusText').textContent = text;
+}
+
+function addMsg(text, who) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + who;
+  div.textContent = text;
+  appendLog(div);
+}
+
+function logSys(text) {
+  const div = document.createElement('div');
+  div.className = 'msg sys';
+  div.textContent = '· ' + text + ' ·';
+  appendLog(div);
+}
+
+function addFileCard(name, size, who) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + who;
+
+  const card = document.createElement('div');
+  card.className = 'file-card';
+
+  const icon = document.createElement('div');
+  icon.className = 'f-icon';
+  icon.textContent = fileIcon(name);
+
+  const body = document.createElement('div');
+  body.className = 'f-body';
+  const title = document.createElement('div');
+  title.className = 'f-name';
+  title.textContent = name;
+  const label = document.createElement('div');
+  label.className = 'f-label';
+  label.textContent = fmtSize(size);
+  const progress = document.createElement('div');
+  progress.className = 'progress';
+  const bar = document.createElement('div');
+  progress.appendChild(bar);
+
+  body.append(title, label, progress);
+  card.append(icon, body);
+  div.appendChild(card);
+  appendLog(div);
+  return { label, progress: bar };
+}
+
+function fileIcon(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (['png','jpg','jpeg','gif','webp','svg','bmp','heic'].includes(ext)) return '🖼️';
+  if (['mp4','mov','avi','mkv','webm'].includes(ext)) return '🎬';
+  if (['mp3','wav','flac','aac','ogg','m4a'].includes(ext)) return '🎵';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return '🗜️';
+  if (['pdf'].includes(ext)) return '📕';
+  if (['doc','docx','txt','md','rtf'].includes(ext)) return '📝';
+  return '📄';
+}
+
+function appendLog(el) {
+  const log = $('chatLog');
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+function fmtSize(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+  return (n / 1073741824).toFixed(2) + ' GB';
+}
+
+// ── 连接码 UI ──
+
+function renderCode(str, ready) {
+  const out = $('codeOut');
+  out.innerHTML = '';
+  for (const ch of str.split('')) {
+    const cell = document.createElement('div');
+    cell.className = 'code-cell';
+    cell.textContent = ch;
+    out.appendChild(cell);
+  }
+  out.classList.toggle('ready', !!ready);
+}
+
+function copyCode() {
+  if (!myCode) return;
+  navigator.clipboard.writeText(myCode).then(() => {
+    const btn = $('copyBtn');
+    btn.classList.add('copied');
+    $('copyLabel').textContent = '已复制 ✓';
+    setTimeout(() => { btn.classList.remove('copied'); $('copyLabel').textContent = '复制连接码'; }, 1600);
+  }).catch(() => {});
+}
+
+const codeCells = [...document.querySelectorAll('.code-cell-input')];
+
+function getInputCode() {
+  return codeCells.map(c => c.value).join('').toUpperCase();
+}
+
+function setInputsDisabled(disabled) {
+  codeCells.forEach(c => { c.disabled = disabled; });
+}
+
+function shakeCode() {
+  const group = $('codeInGroup');
+  group.classList.remove('shake');
+  void group.offsetWidth;   // 触发重排以重启动画
+  group.classList.add('shake');
+}
+
+codeCells.forEach((cell, i) => {
+  cell.addEventListener('input', () => {
+    cell.value = cell.value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 1);
+    if (cell.value && i < codeCells.length - 1) codeCells[i + 1].focus();
+    if (codeCells.every(c => c.value)) connectWithCode();
+  });
+  cell.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !cell.value && i > 0) codeCells[i - 1].focus();
+    else if (e.key === 'ArrowLeft' && i > 0) codeCells[i - 1].focus();
+    else if (e.key === 'ArrowRight' && i < codeCells.length - 1) codeCells[i + 1].focus();
+    else if (e.key === 'Enter') connectWithCode();
+  });
+  cell.addEventListener('paste', e => {
+    e.preventDefault();
+    const chars = (e.clipboardData.getData('text') || '').toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 4).split('');
+    chars.forEach((ch, j) => { if (codeCells[j]) codeCells[j].value = ch; });
+    codeCells[Math.min(chars.length, codeCells.length - 1)].focus();
+    if (codeCells.every(c => c.value)) connectWithCode();
+  });
+});
+
+function resetApp() {
+  location.reload();
+}
+
+// ── 文件选择 / 拖拽 ──
+
+const fileInput = $('fileInput');
+
+$('attachBtn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  queueFiles(fileInput.files);
+  fileInput.value = '';
+});
+
+// 全窗口拖拽：文件拖到页面任意位置都能发送。用计数器抵消子元素反复触发的 enter/leave。
+let dragDepth = 0;
+const draggingFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+
+window.addEventListener('dragenter', e => {
+  if (!draggingFiles(e)) return;
+  e.preventDefault();
+  dragDepth++;
+  if (dc && dc.readyState === 'open') $('dropOverlay').classList.add('show');
+});
+window.addEventListener('dragover', e => {
+  if (draggingFiles(e)) e.preventDefault();   // 阻止浏览器把文件当页面打开
+});
+window.addEventListener('dragleave', e => {
+  if (!draggingFiles(e)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) $('dropOverlay').classList.remove('show');
+});
+window.addEventListener('drop', e => {
+  if (!draggingFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  $('dropOverlay').classList.remove('show');
+  if (dc && dc.readyState === 'open' && e.dataTransfer.files.length) queueFiles(e.dataTransfer.files);
+});
+</script>
+</body>
+</html>

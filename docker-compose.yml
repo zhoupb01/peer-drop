@@ -1,0 +1,62 @@
+services:
+  peer-drop:
+    image: nginx:alpine
+    container_name: peer-drop
+    restart: always
+    depends_on:
+      signal:
+        condition: service_healthy
+    volumes:
+      - ./data:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - proxy
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.peer-drop-secure.entrypoints=websecure"
+      - "traefik.http.routers.peer-drop-secure.rule=Host(`peer-drop.zhoupb.com`)"
+
+  signal:
+    platform: linux/amd64
+    build:
+      context: ./signal
+    image: peer-drop-signal:latest
+    container_name: peer-drop-signal
+    restart: always
+    init: true
+    networks:
+      - backend
+    environment:
+      TURN_SECRET: ${TURN_SECRET:?TURN_SECRET 未设置，写入项目目录 .env}
+      TURN_URLS: turn:peer-drop.zhoupb.com:3479?transport=udp,turn:peer-drop.zhoupb.com:3479?transport=tcp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+
+  coturn:
+    image: coturn/coturn:alpine
+    container_name: peer-drop-turn
+    restart: always
+    # TURN 需要成段的 UDP 中继端口，host 网络避免 Docker 逐端口映射，也能直接拿到宿主机 IPv6
+    network_mode: host
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command:
+      - --log-file=stdout
+      - --static-auth-secret=${TURN_SECRET:?TURN_SECRET 未设置，写入项目目录 .env}
+      # 阿里云 ECS 公网 IP 不在网卡上（NAT），必须显式声明公网/私网映射；
+      # relay-ip 钉在真实网卡，避免把 Docker 网桥地址分配给中继。
+      # 服务器开通 IPv6 后追加一行 --relay-ip=<公网 IPv6> 即支持 v6 中继
+      - --external-ip=8.148.66.181/172.18.18.138
+      - --relay-ip=172.18.18.138
+
+networks:
+  proxy:
+    external: true
+  backend:
+    internal: true
