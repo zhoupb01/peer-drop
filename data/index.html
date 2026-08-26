@@ -295,7 +295,7 @@
       <span class="mark">⇄</span>
       <span><span class="peer">Peer</span><span class="drop">Drop</span></span>
     </div>
-    <p>WebRTC 点对点直连 · 聊天与文件传输<br>直连优先，打洞失败自动降级为自建 TURN 加密中继</p>
+    <p>WebRTC 点对点直连 · 聊天与文件传输<br>直连优先，打洞失败自动降级为 Cloudflare TURN 加密中继</p>
   </header>
 
   <div id="statusBar">
@@ -379,7 +379,7 @@ const CHUNK_SIZE = 16 * 1024;          // 16KB，兼容性最好的 DataChannel 
 const BUFFER_HIGH = 4 * 1024 * 1024;   // 发送缓冲高水位 4MB
 const BUFFER_LOW  = 1 * 1024 * 1024;   // 低于 1MB 继续发
 
-const SIGNAL = '/api';                                        // 同域信令服务，由 Nginx 转发到 signal 容器
+const SIGNAL = '/api';                                        // 同域 Cloudflare Worker 信令接口
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';          // 连接码字母表，去掉易混淆的 I/L/O/0/1
 
 let pc = null;          // RTCPeerConnection
@@ -444,7 +444,7 @@ async function createPeer() {
   // 国内 STUN 通常命中代理的 DIRECT 规则，能拿到真实公网出口。
   // Google STUN 有 AAAA 记录，双栈环境能取到 IPv6 srflx，双方都有 IPv6 时免 NAT 直连
   const iceServers = [
-    { urls: `stun:${location.hostname}:3479` },
+    { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] },
     { urls: 'stun:stun.miwifi.com:3478' },
     { urls: 'stun:stun.qq.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
@@ -458,7 +458,7 @@ async function createPeer() {
     const s = pc.connectionState;
     if (s === 'connecting') setStatus('connecting', '正在打洞连接…');
     else if (s === 'connected') onConnected();
-    else if (s === 'failed') setStatus('failed', '连接失败 — 打洞与 TURN 中继均不通，检查网络是否拦截 3479 端口');
+    else if (s === 'failed') setStatus('failed', '连接失败 — 打洞与 TURN 中继均不通，检查网络是否拦截 UDP/TCP/TLS');
     else if (s === 'disconnected' || s === 'closed') setStatus('failed', '连接已断开');
   };
 }
@@ -477,7 +477,7 @@ function waitIceComplete() {
   });
 }
 
-// ───────────────────────── 信令交换（自建服务中转，只传握手信息） ─────────────────────────
+// ───────────────────────── 信令交换（Worker 中转，只传握手信息） ─────────────────────────
 
 const roomUrl = (code, slot) => `${SIGNAL}/room/${code}/${slot}`;
 
@@ -578,7 +578,7 @@ function onConnected() {
           local.candidateType !== 'host'  ? 'NAT 打洞' :
           isLan ? '局域网直连' : '公网直连（免打洞）';
         logSys(`本机出口: ${kind}${addr ? ` (${addr.includes(':') ? '[' + addr + ']' : addr}:${local.port || ''})` : ''}`);
-        if (local.candidateType === 'relay') setStatus('connected', '已连接 ✓ 打洞未成，经自建 TURN 中继（DTLS 端到端加密）');
+        if (local.candidateType === 'relay') setStatus('connected', '已连接 ✓ 打洞未成，经 Cloudflare TURN 中继（DTLS 端到端加密）');
       }
     });
   }).catch(() => {});
