@@ -3,23 +3,42 @@ import { DurableObject } from 'cloudflare:workers';
 const MAX_BODY_BYTES = 64 * 1024;
 const TURN_CRED_TTL_S = 12 * 60 * 60;
 const NO_STORE = { 'Cache-Control': 'no-store' };
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 export class Room extends DurableObject {
+  async isLive() {
+    const expiresAt = await this.ctx.storage.get('expiresAt');
+    if ((expiresAt ?? 0) <= Date.now()) {
+      await this.ctx.storage.deleteAll();
+      return false;
+    }
+    return true;
+  }
+
+  async reserve() {
+    if (await this.isLive()) return false;
+    const expiresAt = Date.now() + Number(this.env.ROOM_TTL_MS);
+    await Promise.all([
+      this.ctx.storage.put({ expiresAt }),
+      this.ctx.storage.setAlarm(expiresAt),
+    ]);
+    return true;
+  }
+
   async putSlot(slot, value) {
+    if (!(await this.isLive())) return 404;
+    if ((await this.ctx.storage.get(slot)) !== undefined) return 409;
     const expiresAt = Date.now() + Number(this.env.ROOM_TTL_MS);
     await Promise.all([
       this.ctx.storage.put({ [slot]: value, expiresAt }),
       this.ctx.storage.setAlarm(expiresAt),
     ]);
+    return 200;
   }
 
   async getSlot(slot) {
-    const values = await this.ctx.storage.get(['expiresAt', slot]);
-    if ((values.get('expiresAt') ?? 0) <= Date.now()) {
-      await this.ctx.storage.deleteAll();
-      return null;
-    }
-    return values.get(slot) ?? null;
+    if (!(await this.isLive())) return null;
+    return (await this.ctx.storage.get(slot)) ?? null;
   }
 
   async alarm() {
@@ -62,13 +81,12 @@ async function readBody(request) {
   return new TextDecoder().decode(bytes.subarray(0, size));
 }
 
-async function allowed(request, env, kind) {
+async function allowed(request, limit, kind) {
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  return (await env.API_WRITE_LIMIT.limit({ key: `${kind}:${ip}` })).success;
+  return (await limit.limit({ key: `${kind}:${ip}` })).success;
 }
 
-async function issueTurnCredentials(request, env) {
-  if (!(await allowed(request, env, 'turn'))) return respond(429, 'rate limited');
+async function issueTurnCredentials(env) {
   if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) return respond(503, 'turn unavailable');
 
   const response = await fetch(
@@ -101,14 +119,31 @@ async function issueTurnCredentials(request, env) {
     : respond(502, 'turn unavailable');
 }
 
+async function createRoom(request, env) {
+  if (request.method !== 'POST') return respond(405, 'method not allowed');
+  if (!(await allowed(request, env.API_WRITE_LIMIT, 'room-create'))) return respond(429, 'rate limited');
+  for (let i = 0; i < 5; i++) {
+    const code = Array.from(crypto.getRandomValues(new Uint8Array(4)), b => CODE_CHARS[b % CODE_CHARS.length]).join('');
+    if (await env.ROOMS.getByName(code).reserve()) return respond(200, code);
+  }
+  return respond(503, 'no free code');
+}
+
 async function handleRoom(request, env, code, slot) {
   const room = env.ROOMS.getByName(code);
 
+  if (slot === 'turn') {
+    if (request.method !== 'GET') return respond(405, 'method not allowed');
+    if (!(await allowed(request, env.API_WRITE_LIMIT, 'turn'))) return respond(429, 'rate limited');
+    if (!(await room.isLive())) return respond(404, 'not found');
+    return issueTurnCredentials(env);
+  }
+
   if (request.method === 'POST') {
-    if (!(await allowed(request, env, 'room-write'))) return respond(429, 'rate limited');
+    if (!(await allowed(request, env.API_WRITE_LIMIT, 'room-write'))) return respond(429, 'rate limited');
     try {
-      await room.putSlot(slot, await readBody(request));
-      return respond(200, 'ok');
+      const status = await room.putSlot(slot, await readBody(request));
+      return respond(status, { 200: 'ok', 404: 'not found', 409: 'slot taken' }[status]);
     } catch (error) {
       if (error instanceof Error && error.message === 'body too large') {
         return respond(413, 'payload too large');
@@ -118,6 +153,7 @@ async function handleRoom(request, env, code, slot) {
   }
 
   if (request.method === 'GET') {
+    if (!(await allowed(request, env.API_READ_LIMIT, 'room-read'))) return respond(429, 'rate limited');
     const value = await room.getSlot(slot);
     return value === null ? respond(404) : respond(200, value);
   }
@@ -133,11 +169,9 @@ export default {
       if (request.method === 'GET' && url.pathname === '/api/healthz') {
         return respond(200, 'ok');
       }
-      if (request.method === 'GET' && url.pathname === '/api/turn') {
-        return await issueTurnCredentials(request, env);
-      }
+      if (url.pathname === '/api/room') return await createRoom(request, env);
 
-      const match = url.pathname.match(/^\/api\/room\/([A-Z0-9]{4})\/(offer|answer)$/);
+      const match = url.pathname.match(/^\/api\/room\/([A-Z0-9]{4})\/(offer|answer|turn)$/);
       if (match) return await handleRoom(request, env, match[1], match[2]);
       if (url.pathname.startsWith('/api/')) return respond(404, 'not found');
 

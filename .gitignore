@@ -1,4 +1,6 @@
 .env
 .dev.vars*
-.wrangler/
+.cloudflare/
+node_modules/
+dist/
 .DS_Store

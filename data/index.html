@@ -3,168 +3,267 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
 <title>PeerDrop · 点对点直连传输</title>
 <style>
   :root {
-    --bg-1: #f7f9fc;
-    --bg-2: #eef2f8;
-    --glow: #e6efff;
+    --bg: #eef0f7;
 
-    --surface: #ffffff;
-    --surface-2: #f7f9fc;
-    --field: #f5f7fb;
+    --glass-bg: rgba(255, 255, 255, .55);
+    --glass-bg-strong: rgba(255, 255, 255, .75);
+    --glass-border: rgba(255, 255, 255, .75);
 
-    --line: rgba(16, 24, 40, .09);
-    --line-strong: rgba(16, 24, 40, .16);
+    --field: rgba(255, 255, 255, .5);
+    --field-border: rgba(20, 20, 40, .10);
 
-    --text: #1a2230;
-    --text-2: #556275;
-    --dim: #8a94a6;
+    --text: #14151f;
+    --text-2: #4c5063;
+    --dim: #82869a;
 
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-soft: #eef4ff;
-    --accent-line: #c7d7fe;
+    --accent: #6a5cff;
+    --accent-2: #22c1dc;
+    --accent-hover: #5847e6;
+    --accent-soft: rgba(106, 92, 255, .14);
+    --accent-line: rgba(106, 92, 255, .45);
+    --on-accent: #ffffff;
 
-    --ok: #12b76a;
+    --ok: #17b26a;
+    --ok-soft: rgba(23, 178, 106, .18);
     --warn: #f79009;
+    --warn-soft: rgba(247, 144, 9, .22);
     --err: #f04438;
 
-    --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05), 0 1px 3px rgba(16, 24, 40, .05);
-    --shadow-md: 0 4px 12px rgba(16, 24, 40, .06), 0 2px 6px rgba(16, 24, 40, .04);
-    --shadow-lg: 0 18px 40px rgba(16, 24, 40, .12), 0 6px 14px rgba(16, 24, 40, .06);
+    --blob-1: #8b7bff;
+    --blob-2: #22c1dc;
+    --blob-3: #ff7ab8;
+
+    --shadow-glass: 0 8px 32px rgba(31, 41, 66, .12);
+    --shadow-lg: 0 30px 80px rgba(31, 41, 66, .22);
+    --inset-hi: inset 0 1px 0 rgba(255, 255, 255, .6);
 
     --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    --radius: 16px;
+    --radius: 26px;
+    --radius-sm: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0b10;
+
+      --glass-bg: rgba(30, 32, 46, .55);
+      --glass-bg-strong: rgba(30, 32, 46, .78);
+      --glass-border: rgba(255, 255, 255, .14);
+
+      --field: rgba(255, 255, 255, .06);
+      --field-border: rgba(255, 255, 255, .12);
+
+      --text: #f1f2f7;
+      --text-2: #aeb2c4;
+      --dim: #6c7086;
+
+      --accent: #a99bff;
+      --accent-2: #4fd8f0;
+      --accent-hover: #bcb0ff;
+      --accent-soft: rgba(169, 155, 255, .18);
+      --accent-line: rgba(169, 155, 255, .5);
+      --on-accent: #15111f;
+
+      --ok: #3ddc91;
+      --ok-soft: rgba(61, 220, 145, .18);
+      --warn: #ffb545;
+      --warn-soft: rgba(255, 181, 69, .22);
+      --err: #ff6b6b;
+
+      --blob-1: #6a5cff;
+      --blob-2: #17c3d1;
+      --blob-3: #ff5fa8;
+
+      --shadow-glass: 0 8px 32px rgba(0, 0, 0, .5);
+      --shadow-lg: 0 30px 90px rgba(0, 0, 0, .6);
+      --inset-hi: inset 0 1px 0 rgba(255, 255, 255, .07);
+    }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background:
-      radial-gradient(1100px 520px at 50% -260px, var(--glow) 0%, transparent 62%),
-      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
-    background-attachment: fixed;
+    background: var(--bg);
     color: var(--text);
     font-family: var(--sans);
     min-height: 100vh;
-    padding: 40px 18px 64px;
+    padding: 48px 18px 64px;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 720px; margin: 0 auto; }
+  .wrap { max-width: 640px; margin: 0 auto; position: relative; }
+
+  /* ── Floating background blobs ── */
+  .bg-blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+  .bg-blobs span {
+    position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%;
+    filter: blur(80px); opacity: .5;
+  }
+  .bg-blobs span:nth-child(1) { background: var(--blob-1); top: -18vmax; left: -14vmax; animation: float1 24s ease-in-out infinite; }
+  .bg-blobs span:nth-child(2) { background: var(--blob-2); bottom: -20vmax; right: -12vmax; animation: float2 28s ease-in-out infinite; }
+  .bg-blobs span:nth-child(3) { background: var(--blob-3); top: 32%; left: 58%; width: 34vmax; height: 34vmax; opacity: .38; animation: float3 32s ease-in-out infinite; }
+  @keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(6vmax, 8vmax); } }
+  @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-5vmax, -7vmax); } }
+  @keyframes float3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-4vmax, 5vmax) scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-blobs span { animation: none; }
+  }
 
   /* ── Header ── */
-  header { text-align: center; margin-bottom: 26px; }
+  header { text-align: center; margin-bottom: 24px; }
   .brand {
-    display: inline-flex; align-items: center; gap: 12px;
-    font-family: var(--mono); font-weight: 700;
-    font-size: 26px; letter-spacing: -.4px;
+    display: inline-flex; align-items: center; gap: 11px;
+    font-weight: 800; font-size: 23px; letter-spacing: -.3px;
   }
   .brand .mark {
     display: inline-grid; place-items: center;
-    width: 40px; height: 40px; border-radius: 12px;
-    background: linear-gradient(140deg, var(--accent), #6d9bff);
-    color: #fff; font-size: 20px;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, .35);
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(140deg, var(--accent), var(--accent-2));
+    color: #fff; font-size: 18px;
+    box-shadow: 0 8px 20px var(--accent-soft);
   }
   .brand .peer { color: var(--text); }
-  .brand .drop { color: var(--accent); }
+  .brand .drop {
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
   header p {
-    color: var(--text-2); font-size: 13.5px; line-height: 1.6;
-    margin-top: 12px; max-width: 460px; margin-left: auto; margin-right: auto;
+    color: var(--text-2); font-size: 13.5px; line-height: 1.7;
+    margin-top: 14px; max-width: 420px; margin-left: auto; margin-right: auto;
+  }
+
+  /* ── Step indicator (pure CSS, driven by panel visibility) ── */
+  .steps { display: flex; align-items: flex-start; justify-content: center; margin: 26px 0 22px; }
+  .step { display: flex; flex-direction: column; align-items: center; gap: 7px; width: 84px; }
+  .step-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 13px; font-weight: 700;
+    background: var(--field); border: 1px solid var(--field-border); color: var(--dim);
+    transition: background .35s ease, color .35s ease, box-shadow .35s ease, border-color .35s ease;
+  }
+  .step-label { font-size: 11px; color: var(--dim); white-space: nowrap; transition: color .35s ease; }
+  .step-line { width: 40px; height: 2px; background: var(--field-border); margin: 15px -6px 0; flex-shrink: 0; }
+
+  .wrap:has(#roleSelect:not(.hidden)) .step[data-step="1"] .step-dot,
+  .wrap:has(#offererPanel:not(.hidden)) .step[data-step="2"] .step-dot,
+  .wrap:has(#answererPanel:not(.hidden)) .step[data-step="2"] .step-dot,
+  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="3"] .step-dot {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent; color: var(--on-accent);
+    box-shadow: 0 0 0 6px var(--accent-soft);
+  }
+  .wrap:has(#roleSelect:not(.hidden)) .step[data-step="1"] .step-label,
+  .wrap:has(#offererPanel:not(.hidden)) .step[data-step="2"] .step-label,
+  .wrap:has(#answererPanel:not(.hidden)) .step[data-step="2"] .step-label,
+  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="3"] .step-label {
+    color: var(--text); font-weight: 650;
+  }
+  .wrap:has(#offererPanel:not(.hidden)) .step[data-step="1"] .step-dot,
+  .wrap:has(#answererPanel:not(.hidden)) .step[data-step="1"] .step-dot,
+  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="1"] .step-dot,
+  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="2"] .step-dot {
+    background: var(--ok); border-color: transparent; color: #fff; box-shadow: none;
   }
 
   /* ── Status bar ── */
   #statusBar {
     display: flex; align-items: center; gap: 10px;
     font-size: 13px; color: var(--text-2);
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: 999px;
-    padding: 9px 16px;
+    padding: 10px 16px;
     margin-bottom: 20px;
-    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: var(--shadow-glass), var(--inset-hi);
   }
   .dot {
-    width: 9px; height: 9px; border-radius: 50%;
+    width: 8px; height: 8px; border-radius: 50%;
     background: var(--dim); flex-shrink: 0;
     box-shadow: 0 0 0 0 rgba(0,0,0,0);
     transition: background .3s, box-shadow .3s;
   }
   .dot.connecting { background: var(--warn); animation: pulse 1.1s infinite; }
-  .dot.connected { background: var(--ok); box-shadow: 0 0 0 4px rgba(18, 183, 106, .18); }
+  .dot.connected { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
   .dot.failed { background: var(--err); }
-  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(247,144,9,.35);} 60% { box-shadow: 0 0 0 6px rgba(247,144,9,0);} }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--warn-soft);} 60% { box-shadow: 0 0 0 5px transparent;} }
 
-  /* ── Cards ── */
+  /* ── Glass cards ── */
   .card {
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 18px;
-    box-shadow: var(--shadow-md);
+    padding: 32px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: var(--shadow-lg), var(--inset-hi);
   }
   .card h2 {
-    font-size: 15px; font-weight: 650; letter-spacing: -.2px;
-    margin-bottom: 4px;
+    font-size: 17px; font-weight: 700; letter-spacing: -.2px;
+    margin-bottom: 6px;
   }
-  .card .sub { color: var(--text-2); font-size: 13px; line-height: 1.6; margin-bottom: 18px; }
+  .card .sub { color: var(--text-2); font-size: 13px; line-height: 1.65; margin-bottom: 22px; }
   .card .sub:last-child { margin-bottom: 0; }
   .hidden { display: none !important; }
 
   /* ── Buttons ── */
   button {
     font-family: var(--sans); font-size: 14px; font-weight: 550;
-    border-radius: 10px; cursor: pointer;
-    border: 1px solid var(--line-strong);
-    background: var(--surface);
+    border-radius: var(--radius-sm); cursor: pointer;
+    border: 1px solid var(--field-border);
+    background: var(--field);
     color: var(--text);
     padding: 10px 18px;
-    transition: transform .12s, box-shadow .15s, background .15s, border-color .15s;
+    transition: border-color .15s, background .15s, transform .12s;
   }
-  button:hover:not(:disabled) { border-color: var(--accent-line); box-shadow: var(--shadow-sm); }
+  button:hover:not(:disabled) { border-color: var(--accent-line); }
   button:active:not(:disabled) { transform: translateY(1px); }
   button:disabled { opacity: .45; cursor: not-allowed; }
   button.primary {
-    background: var(--accent); color: #fff;
-    border-color: transparent; font-weight: 600;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, .28);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--on-accent);
+    border-color: transparent; font-weight: 650;
+    box-shadow: 0 10px 24px var(--accent-soft);
   }
-  button.primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: 0 8px 20px rgba(37, 99, 235, .34); }
-  button:focus-visible { outline: 3px solid var(--accent-line); outline-offset: 2px; }
+  button.primary:hover:not(:disabled) { filter: brightness(1.06); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* ── Role picker ── */
   .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .role-card {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
-    text-align: left; padding: 20px; border-radius: 14px;
-    background: var(--surface-2); border: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+    text-align: left; padding: 22px; border-radius: var(--radius-sm);
+    background: var(--field); border: 1px solid var(--field-border);
   }
-  .role-card:hover { border-color: var(--accent-line); background: var(--accent-soft); box-shadow: var(--shadow-md); }
+  .role-card:hover { border-color: var(--accent-line); background: var(--accent-soft); }
   .role-card .r-icon {
     display: grid; place-items: center;
-    width: 40px; height: 40px; border-radius: 11px;
-    background: var(--accent-soft); color: var(--accent);
-    border: 1px solid var(--accent-line); font-size: 20px;
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(140deg, var(--accent), var(--accent-2));
+    color: #fff; font-size: 18px;
   }
-  .role-card .r-title { font-size: 15px; font-weight: 650; }
+  .role-card .r-title { font-size: 15px; font-weight: 700; }
   .role-card .r-sub { font-size: 12.5px; color: var(--text-2); line-height: 1.5; font-weight: 400; }
 
   /* ── Connection code ── */
-  .code-cells { display: flex; gap: 12px; justify-content: center; margin: 6px 0 4px; }
+  .code-cells { display: flex; gap: 10px; justify-content: center; margin: 10px 0 4px; }
   .code-cell, .code-cell-input {
-    width: 66px; height: 82px;
-    font-family: var(--mono); font-size: 40px; font-weight: 700;
+    width: 64px; height: 78px;
+    font-family: var(--mono); font-size: 36px; font-weight: 700;
     text-align: center; text-transform: uppercase;
-    color: var(--accent);
     background: var(--field);
-    border: 1.5px solid var(--line);
-    border-radius: 14px;
+    border: 1.5px solid var(--field-border);
+    border-radius: var(--radius-sm);
   }
   .code-cell {
     display: grid; place-items: center; line-height: 1;
-    transition: transform .18s;
+    background: linear-gradient(140deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    box-shadow: 0 12px 28px var(--accent-soft), var(--inset-hi);
   }
   #codeOut.ready .code-cell { animation: pop .28s ease both; }
   #codeOut.ready .code-cell:nth-child(2) { animation-delay: .05s; }
@@ -180,41 +279,43 @@
   .code-cells.shake { animation: shake .4s; }
   @keyframes shake { 10%,90%{transform:translateX(-2px)} 30%,70%{transform:translateX(5px)} 50%{transform:translateX(-6px)} }
 
-  .code-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 18px; flex-wrap: wrap; }
+  .code-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 22px; flex-wrap: wrap; }
   .copy-btn { display: inline-flex; align-items: center; gap: 7px; }
-  .copy-btn.copied { color: var(--ok); border-color: rgba(18,183,106,.4); }
+  .copy-btn.copied { color: var(--ok); border-color: var(--ok-soft); }
 
   .backlink {
-    display: inline-block; margin-top: 16px;
-    background: none; border: none; box-shadow: none;
+    display: inline-block; margin-top: 18px;
+    background: none; border: none;
     color: var(--dim); font-size: 12.5px; padding: 4px 2px;
   }
-  .backlink:hover { color: var(--accent); border: none; box-shadow: none; }
+  .backlink:hover { color: var(--accent); border: none; }
 
   /* ── Chat ── */
   #chatLog {
     height: 340px; overflow-y: auto;
-    background: var(--surface-2);
-    border: 1px solid var(--line);
-    border-radius: 14px;
+    background: var(--field);
+    border: 1px solid var(--field-border);
+    border-radius: var(--radius-sm);
     padding: 16px;
     display: flex; flex-direction: column; gap: 10px;
     margin-bottom: 14px;
   }
   #chatLog::-webkit-scrollbar { width: 8px; }
-  #chatLog::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+  #chatLog::-webkit-scrollbar-thumb { background: var(--field-border); border-radius: 4px; }
 
   .msg {
-    max-width: 78%; padding: 9px 13px; border-radius: 14px;
+    max-width: 78%; padding: 9px 13px; border-radius: var(--radius-sm);
     font-size: 14px; line-height: 1.55; word-break: break-word; white-space: pre-wrap;
   }
   .msg.me {
-    align-self: flex-end; background: var(--accent); color: #fff;
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--on-accent);
     border-bottom-right-radius: 5px;
   }
   .msg.peer {
-    align-self: flex-start; background: var(--surface); border: 1px solid var(--line);
-    border-bottom-left-radius: 5px; box-shadow: var(--shadow-sm);
+    align-self: flex-start; background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+    border-bottom-left-radius: 5px;
   }
   .msg.sys {
     align-self: center; color: var(--dim); font-size: 11.5px;
@@ -224,71 +325,83 @@
   .file-card { display: flex; align-items: center; gap: 12px; min-width: 210px; }
   .file-card .f-icon {
     display: grid; place-items: center; flex-shrink: 0;
-    width: 38px; height: 38px; border-radius: 10px;
+    width: 38px; height: 38px; border-radius: var(--radius-sm);
     background: var(--accent-soft); font-size: 19px;
   }
-  .msg.me .file-card .f-icon { background: rgba(255,255,255,.22); }
+  .msg.me .file-card .f-icon { background: rgba(255,255,255,.25); }
   .file-card .f-body { flex: 1; min-width: 0; }
   .file-card .f-name { font-size: 13.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .file-card .f-label { font-size: 11.5px; opacity: .82; margin-top: 2px; }
   .file-card .f-label a { color: inherit; font-weight: 600; text-decoration: underline; }
   .msg.peer .file-card .f-label a { color: var(--accent); }
-  .progress { height: 5px; border-radius: 3px; margin-top: 7px; overflow: hidden; background: rgba(16,24,40,.1); }
+  .progress { height: 5px; border-radius: 3px; margin-top: 7px; overflow: hidden; background: var(--field-border); }
   .msg.me .progress { background: rgba(255,255,255,.3); }
   .progress > div { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width .12s; }
-  .msg.me .progress > div { background: #fff; }
+  .msg.me .progress > div { background: var(--on-accent); }
 
-  /* ── Composer ── */
-  #composer { display: flex; gap: 10px; align-items: center; }
+  /* ── Composer (floating glass pill) ── */
+  #composer {
+    display: flex; gap: 8px; align-items: flex-end;
+    background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+    border-radius: 22px; padding: 6px 6px 6px 8px;
+    box-shadow: var(--inset-hi);
+  }
   .icon-btn {
     display: grid; place-items: center; flex-shrink: 0;
-    width: 42px; height: 42px; padding: 0; font-size: 18px; border-radius: 11px;
-    background: var(--field); border: 1px solid var(--line); color: var(--text-2);
+    width: 40px; height: 40px; padding: 0; font-size: 17px; border-radius: 50%;
+    background: transparent; border: none; color: var(--text-2);
   }
-  .icon-btn:hover { color: var(--accent); }
+  .icon-btn:hover { color: var(--accent); background: var(--accent-soft); }
   #chatInput {
     flex: 1; min-width: 0;
-    background: var(--field); border: 1px solid var(--line);
-    border-radius: 11px; color: var(--text);
-    padding: 11px 14px; font-size: 14px; font-family: var(--sans);
+    background: transparent; border: none;
+    color: var(--text);
+    padding: 9px 4px; font-size: 14px; font-family: var(--sans);
+    line-height: 1.4; resize: none;
+    field-sizing: content; max-height: 120px; overflow-y: auto;
   }
-  #chatInput:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
-  #sendBtn { height: 42px; }
-  .composer-hint { color: var(--dim); font-size: 12px; margin-top: 12px; text-align: center; }
+  #chatInput:focus { outline: none; }
+  #sendBtn { height: 38px; border-radius: 999px; }
+  .composer-hint { color: var(--dim); font-size: 12px; margin-top: 14px; text-align: center; }
   .composer-hint b { color: var(--text-2); font-weight: 600; }
 
   /* ── Full-window drop overlay ── */
   #dropOverlay {
     position: fixed; inset: 0; z-index: 50;
     display: grid; place-items: center;
-    background: rgba(37, 99, 235, .12);
-    backdrop-filter: blur(4px);
+    background: rgba(10, 11, 20, .38);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     opacity: 0; pointer-events: none; transition: opacity .18s;
   }
   #dropOverlay.show { opacity: 1; }
   #dropOverlay .drop-inner {
     display: flex; flex-direction: column; align-items: center; gap: 14px;
-    padding: 44px 60px; border-radius: 22px;
-    background: var(--surface); border: 2px dashed var(--accent);
+    padding: 44px 60px; border-radius: 28px;
+    background: var(--glass-bg-strong); border: 1.5px dashed var(--accent);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
     box-shadow: var(--shadow-lg);
     color: var(--accent); font-size: 17px; font-weight: 600;
     transform: scale(.96); transition: transform .18s;
   }
   #dropOverlay.show .drop-inner { transform: scale(1); }
-  #dropOverlay .drop-icon { font-size: 46px; line-height: 1; }
+  #dropOverlay .drop-icon { font-size: 44px; line-height: 1; }
   #dropOverlay .drop-sub { color: var(--text-2); font-size: 13px; font-weight: 400; }
 
-  footer { text-align: center; color: var(--dim); font-size: 12px; margin-top: 26px; line-height: 1.6; }
-
   @media (max-width: 560px) {
-    body { padding: 28px 14px 48px; }
-    .card { padding: 20px; }
+    body { padding: 32px 14px 48px; }
+    .card { padding: 22px; }
     .role-grid { grid-template-columns: 1fr; }
-    .code-cell, .code-cell-input { width: 56px; height: 72px; font-size: 34px; }
+    .code-cell, .code-cell-input { width: 54px; height: 68px; font-size: 30px; }
+    .step { width: 68px; }
+    .step-line { width: 24px; }
+    .step-label { font-size: 10px; }
   }
 </style>
 </head>
 <body>
+<div class="bg-blobs" aria-hidden="true"><span></span><span></span><span></span></div>
 <div class="wrap">
   <header>
     <div class="brand">
@@ -297,6 +410,23 @@
     </div>
     <p>WebRTC 点对点直连 · 聊天与文件传输<br>直连优先，打洞失败自动降级为 Cloudflare TURN 加密中继</p>
   </header>
+
+  <div class="steps" aria-hidden="true">
+    <div class="step" data-step="1">
+      <span class="step-dot">1</span>
+      <span class="step-label">选择角色</span>
+    </div>
+    <span class="step-line"></span>
+    <div class="step" data-step="2">
+      <span class="step-dot">2</span>
+      <span class="step-label">建立连接</span>
+    </div>
+    <span class="step-line"></span>
+    <div class="step" data-step="3">
+      <span class="step-dot">3</span>
+      <span class="step-label">传输</span>
+    </div>
+  </div>
 
   <div id="statusBar">
     <div class="dot" id="statusDot"></div>
@@ -354,8 +484,8 @@
     <div id="chatLog"></div>
     <div id="composer">
       <button class="icon-btn" id="attachBtn" title="发送文件" aria-label="发送文件">📎</button>
-      <input id="chatInput" placeholder="输入消息，回车发送…" autocomplete="off"
-             onkeydown="if(event.key==='Enter')sendChat()">
+      <textarea id="chatInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行…" rows="1"
+             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
       <button class="primary" id="sendBtn" onclick="sendChat()">发送</button>
     </div>
     <p class="composer-hint">把文件拖到窗口<b>任意位置</b>即可发送，或点击 <b>📎</b> 选择文件</p>
@@ -380,7 +510,6 @@ const BUFFER_HIGH = 4 * 1024 * 1024;   // 发送缓冲高水位 4MB
 const BUFFER_LOW  = 1 * 1024 * 1024;   // 低于 1MB 继续发
 
 const SIGNAL = '/api';                                        // 同域 Cloudflare Worker 信令接口
-const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';          // 连接码字母表，去掉易混淆的 I/L/O/0/1
 
 let pc = null;          // RTCPeerConnection
 let dc = null;          // RTCDataChannel
@@ -439,7 +568,7 @@ function expandSDP(code) {
 
 // ───────────────────────── 连接建立 ─────────────────────────
 
-async function createPeer() {
+async function createPeer(code) {
   // 国内 + 国外 STUN 各备一路：挂代理时国外 STUN 拿到的是代理出口 IP（打不通洞），
   // 国内 STUN 通常命中代理的 DIRECT 规则，能拿到真实公网出口。
   // Google STUN 有 AAAA 记录，双栈环境能取到 IPv6 srflx，双方都有 IPv6 时免 NAT 直连
@@ -450,7 +579,7 @@ async function createPeer() {
     { urls: 'stun:stun.l.google.com:19302' },
   ];
   // TURN 时效凭据由信令服务签发。TUN 代理等场景打不了洞时，ICE 自动降级走中继
-  const turn = await fetch(`${SIGNAL}/turn`).then(r => r.ok ? r.json() : null).catch(() => null);
+  const turn = await fetch(`${SIGNAL}/room/${code}/turn`).then(r => r.ok ? r.json() : null).catch(() => null);
   if (turn?.urls?.length) iceServers.push(turn);
 
   pc = new RTCPeerConnection({ iceServers });
@@ -481,21 +610,33 @@ function waitIceComplete() {
 
 const roomUrl = (code, slot) => `${SIGNAL}/room/${code}/${slot}`;
 
+function signalError(status) {
+  return Object.assign(new Error('signal ' + status), { status });
+}
+
 async function signalPut(code, slot, value) {
   const r = await fetch(roomUrl(code, slot), { method: 'POST', body: value });
-  if (!r.ok) throw new Error('signal put ' + r.status);
+  if (!r.ok) throw signalError(r.status);
 }
 
 async function signalGet(code, slot) {
   const r = await fetch(roomUrl(code, slot));
-  return r.ok ? r.text() : null;
+  if (r.status === 200) return r.text();
+  if (r.status === 404) return null;
+  throw signalError(r.status);
 }
 
 async function startAsOfferer() {
   $('roleSelect').classList.add('hidden');
   $('offererPanel').classList.remove('hidden');
   renderCode('····', false);
-  await createPeer();
+  let code;
+  try {
+    const r = await fetch(`${SIGNAL}/room`, { method: 'POST' });
+    if (!r.ok) throw signalError(r.status);
+    code = await r.text();
+  } catch { return setStatus('failed', '信令服务器连不上 — 确认服务已部署、/api 可达'); }
+  await createPeer(code);
   dc = pc.createDataChannel('main');
   setupChannel(dc);
 
@@ -503,7 +644,6 @@ async function startAsOfferer() {
   await pc.setLocalDescription(offer);
   await waitIceComplete();
 
-  const code = Array.from(crypto.getRandomValues(new Uint8Array(4)), b => CODE_CHARS[b % CODE_CHARS.length]).join('');
   try { await signalPut(code, 'offer', compressSDP(pc.localDescription)); }
   catch { return setStatus('failed', '信令服务器连不上 — 确认服务已部署、/api 可达'); }
 
@@ -535,7 +675,13 @@ async function connectWithCode() {
   connecting = true;
   setInputsDisabled(true);
   setStatus('connecting', '取回对方握手信息…');
-  const offerCode = await signalGet(code, 'offer').catch(() => null);
+  let offerCode;
+  try { offerCode = await signalGet(code, 'offer'); }
+  catch {
+    connecting = false;
+    setInputsDisabled(false);
+    return setStatus('failed', '信令服务器暂时连不上 — 稍等一会儿再试');
+  }
   if (!offerCode) {
     connecting = false;
     setInputsDisabled(false);
@@ -544,7 +690,7 @@ async function connectWithCode() {
     return;
   }
 
-  await createPeer();
+  await createPeer(code);
   pc.ondatachannel = e => { dc = e.channel; setupChannel(dc); };
 
   await pc.setRemoteDescription(expandSDP(offerCode));
@@ -553,7 +699,11 @@ async function connectWithCode() {
   await waitIceComplete();
 
   try { await signalPut(code, 'answer', compressSDP(pc.localDescription)); }
-  catch { return setStatus('failed', '信令服务器连不上，应答发送失败'); }
+  catch (error) {
+    return setStatus('failed', error.status === 409
+      ? '这个连接码已被别人使用 — 请让对方重新生成'
+      : '信令服务器连不上，应答发送失败');
+  }
   setStatus('connecting', '应答已送达，正在打洞直连…');
 }
 
