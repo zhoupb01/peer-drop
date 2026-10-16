@@ -2,505 +2,262 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>PeerDrop · 点对点直连传输</title>
+<meta name="description" content="两台设备之间传文件和消息，不用登录。">
+<title>PeerDrop · 两台设备之间传文件</title>
 <style>
   :root {
-    --bg: #eef0f7;
-
-    --glass-bg: rgba(255, 255, 255, .55);
-    --glass-bg-strong: rgba(255, 255, 255, .75);
-    --glass-border: rgba(255, 255, 255, .75);
-
-    --field: rgba(255, 255, 255, .5);
-    --field-border: rgba(20, 20, 40, .10);
-
-    --text: #14151f;
-    --text-2: #4c5063;
-    --dim: #82869a;
-
-    --accent: #6a5cff;
-    --accent-2: #22c1dc;
-    --accent-hover: #5847e6;
-    --accent-soft: rgba(106, 92, 255, .14);
-    --accent-line: rgba(106, 92, 255, .45);
-    --on-accent: #ffffff;
-
-    --ok: #17b26a;
-    --ok-soft: rgba(23, 178, 106, .18);
-    --warn: #f79009;
-    --warn-soft: rgba(247, 144, 9, .22);
-    --err: #f04438;
-
-    --blob-1: #8b7bff;
-    --blob-2: #22c1dc;
-    --blob-3: #ff7ab8;
-
-    --shadow-glass: 0 8px 32px rgba(31, 41, 66, .12);
-    --shadow-lg: 0 30px 80px rgba(31, 41, 66, .22);
-    --inset-hi: inset 0 1px 0 rgba(255, 255, 255, .6);
-
-    --mono: "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    --radius: 26px;
-    --radius-sm: 16px;
+    --bg: #fafaf9;
+    --panel: #ffffff;
+    --sunk: #f2f2f0;
+    --line: #e6e6e2;
+    --line-2: #d2d2cc;
+    --tx: #18181b;
+    --tx-2: #55555d;
+    --tx-3: #8a8a92;
+    --ac: #2563eb;
+    --ac-soft: #e7effd;
+    --on-ac: #ffffff;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --err: #d92d20;
+    --err-soft: #fdecea;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0a0b10;
-
-      --glass-bg: rgba(30, 32, 46, .55);
-      --glass-bg-strong: rgba(30, 32, 46, .78);
-      --glass-border: rgba(255, 255, 255, .14);
-
-      --field: rgba(255, 255, 255, .06);
-      --field-border: rgba(255, 255, 255, .12);
-
-      --text: #f1f2f7;
-      --text-2: #aeb2c4;
-      --dim: #6c7086;
-
-      --accent: #a99bff;
-      --accent-2: #4fd8f0;
-      --accent-hover: #bcb0ff;
-      --accent-soft: rgba(169, 155, 255, .18);
-      --accent-line: rgba(169, 155, 255, .5);
-      --on-accent: #15111f;
-
-      --ok: #3ddc91;
-      --ok-soft: rgba(61, 220, 145, .18);
-      --warn: #ffb545;
-      --warn-soft: rgba(255, 181, 69, .22);
-      --err: #ff6b6b;
-
-      --blob-1: #6a5cff;
-      --blob-2: #17c3d1;
-      --blob-3: #ff5fa8;
-
-      --shadow-glass: 0 8px 32px rgba(0, 0, 0, .5);
-      --shadow-lg: 0 30px 90px rgba(0, 0, 0, .6);
-      --inset-hi: inset 0 1px 0 rgba(255, 255, 255, .07);
+      --bg: #0c0c0e;
+      --panel: #141417;
+      --sunk: #101013;
+      --line: #24242a;
+      --line-2: #35353d;
+      --tx: #ececf0;
+      --tx-2: #a3a3ad;
+      --tx-3: #74747e;
+      --ac: #5b95ff;
+      --ac-soft: #15213a;
+      --on-ac: #07101f;
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --err-soft: #2b1415;
     }
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
+    margin: 0;
     background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    padding: 48px 18px 64px;
+    color: var(--tx);
+    font: 15px/1.5 var(--sans);
     -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
   }
-  .wrap { max-width: 640px; margin: 0 auto; position: relative; }
+  h1, h2, p { margin: 0; }
+  button, input { font: inherit; color: inherit; margin: 0; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+  :focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 
-  /* ── Floating background blobs ── */
-  .bg-blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
-  .bg-blobs span {
-    position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%;
-    filter: blur(80px); opacity: .5;
-  }
-  .bg-blobs span:nth-child(1) { background: var(--blob-1); top: -18vmax; left: -14vmax; animation: float1 24s ease-in-out infinite; }
-  .bg-blobs span:nth-child(2) { background: var(--blob-2); bottom: -20vmax; right: -12vmax; animation: float2 28s ease-in-out infinite; }
-  .bg-blobs span:nth-child(3) { background: var(--blob-3); top: 32%; left: 58%; width: 34vmax; height: 34vmax; opacity: .38; animation: float3 32s ease-in-out infinite; }
-  @keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(6vmax, 8vmax); } }
-  @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-5vmax, -7vmax); } }
-  @keyframes float3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-4vmax, 5vmax) scale(1.08); } }
-  @media (prefers-reduced-motion: reduce) {
-    .bg-blobs span { animation: none; }
-  }
+  .top { height: 56px; display: flex; align-items: center; max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 650; letter-spacing: -.01em; }
 
-  /* ── Header ── */
-  header { text-align: center; margin-bottom: 24px; }
-  .brand {
-    display: inline-flex; align-items: center; gap: 11px;
-    font-weight: 800; font-size: 23px; letter-spacing: -.3px;
-  }
-  .brand .mark {
-    display: inline-grid; place-items: center;
-    width: 38px; height: 38px; border-radius: 12px;
-    background: linear-gradient(140deg, var(--accent), var(--accent-2));
-    color: #fff; font-size: 18px;
-    box-shadow: 0 8px 20px var(--accent-soft);
-  }
-  .brand .peer { color: var(--text); }
-  .brand .drop {
-    background: linear-gradient(120deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  header p {
-    color: var(--text-2); font-size: 13.5px; line-height: 1.7;
-    margin-top: 14px; max-width: 420px; margin-left: auto; margin-right: auto;
-  }
+  .home { max-width: 1080px; margin: 0 auto; padding: 48px 24px 32px; }
+  h1 { font-size: clamp(26px, 3.6vw, 38px); line-height: 1.2; letter-spacing: -.025em; font-weight: 650; margin-bottom: 36px; text-wrap: balance; }
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 28px; display: flex; flex-direction: column; min-height: 272px; }
+  .card h2 { font-size: 18px; font-weight: 620; letter-spacing: -.01em; }
+  .card .d { color: var(--tx-2); margin-top: 4px; }
+  .card .grow { flex: 1; min-height: 24px; }
+  .foot { margin-top: 28px; color: var(--tx-3); font-size: 13px; max-width: 44em; }
 
-  /* ── Step indicator (pure CSS, driven by panel visibility) ── */
-  .steps { display: flex; align-items: flex-start; justify-content: center; margin: 26px 0 22px; }
-  .step { display: flex; flex-direction: column; align-items: center; gap: 7px; width: 84px; }
-  .step-dot {
-    width: 32px; height: 32px; border-radius: 50%;
-    display: grid; place-items: center; font-size: 13px; font-weight: 700;
-    background: var(--field); border: 1px solid var(--field-border); color: var(--dim);
-    transition: background .35s ease, color .35s ease, box-shadow .35s ease, border-color .35s ease;
-  }
-  .step-label { font-size: 11px; color: var(--dim); white-space: nowrap; transition: color .35s ease; }
-  .step-line { width: 40px; height: 2px; background: var(--field-border); margin: 15px -6px 0; flex-shrink: 0; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--panel); color: var(--tx); font-weight: 560; white-space: nowrap; }
+  .btn:hover { background: var(--sunk); }
+  .btn.pri { background: var(--ac); border-color: var(--ac); color: var(--on-ac); }
+  .btn.pri:hover { filter: brightness(1.07); }
+  .btn.wide { width: 100%; height: 50px; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--tx-2); }
+  .btn.sm { height: 44px; padding: 0 14px; font-size: 14px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.copied { border-color: var(--ok); color: var(--ok); }
 
-  .wrap:has(#roleSelect:not(.hidden)) .step[data-step="1"] .step-dot,
-  .wrap:has(#offererPanel:not(.hidden)) .step[data-step="2"] .step-dot,
-  .wrap:has(#answererPanel:not(.hidden)) .step[data-step="2"] .step-dot,
-  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="3"] .step-dot {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    border-color: transparent; color: var(--on-accent);
-    box-shadow: 0 0 0 6px var(--accent-soft);
-  }
-  .wrap:has(#roleSelect:not(.hidden)) .step[data-step="1"] .step-label,
-  .wrap:has(#offererPanel:not(.hidden)) .step[data-step="2"] .step-label,
-  .wrap:has(#answererPanel:not(.hidden)) .step[data-step="2"] .step-label,
-  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="3"] .step-label {
-    color: var(--text); font-weight: 650;
-  }
-  .wrap:has(#offererPanel:not(.hidden)) .step[data-step="1"] .step-dot,
-  .wrap:has(#answererPanel:not(.hidden)) .step[data-step="1"] .step-dot,
-  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="1"] .step-dot,
-  .wrap:has(#chatPanel:not(.hidden)) .step[data-step="2"] .step-dot {
-    background: var(--ok); border-color: transparent; color: #fff; box-shadow: none;
-  }
+  .code { display: flex; gap: 10px; }
+  .code input { flex: 1; min-width: 0; max-width: 76px; height: 76px; padding: 0; text-align: center; font: 600 36px var(--mono); text-transform: uppercase;
+    border: 1px solid var(--line-2); border-radius: 12px; background: var(--bg); color: var(--tx); caret-color: var(--ac); }
+  .code input:focus { outline: none; border-color: var(--ac); box-shadow: 0 0 0 4px var(--ac-soft); }
+  .code input:disabled { opacity: .6; }
+  .code.err input { border-color: var(--err); background: var(--err-soft); }
+  .code.shake { animation: shake .4s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  .emsg { margin-top: 12px; color: var(--err); font-weight: 500; }
+  .actions { margin-top: 16px; }
 
-  /* ── Status bar ── */
-  #statusBar {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 13px; color: var(--text-2);
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 999px;
-    padding: 10px 16px;
-    margin-bottom: 20px;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    box-shadow: var(--shadow-glass), var(--inset-hi);
-  }
-  .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--dim); flex-shrink: 0;
-    box-shadow: 0 0 0 0 rgba(0,0,0,0);
-    transition: background .3s, box-shadow .3s;
-  }
-  .dot.connecting { background: var(--warn); animation: pulse 1.1s infinite; }
-  .dot.connected { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
-  .dot.failed { background: var(--err); }
-  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--warn-soft);} 60% { box-shadow: 0 0 0 5px transparent;} }
+  .card:not(.failed) .fatal { display: none; }
+  .card.failed .normal, .card.failed .when-ok { display: none; }
+  .fatal .emsg { margin: 0 0 16px; }
 
-  /* ── Glass cards ── */
-  .card {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    padding: 32px;
-    margin-bottom: 16px;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    box-shadow: var(--shadow-lg), var(--inset-hi);
-  }
-  .card h2 {
-    font-size: 17px; font-weight: 700; letter-spacing: -.2px;
-    margin-bottom: 6px;
-  }
-  .card .sub { color: var(--text-2); font-size: 13px; line-height: 1.65; margin-bottom: 22px; }
-  .card .sub:last-child { margin-bottom: 0; }
-  .hidden { display: none !important; }
+  .center { max-width: 520px; margin: 0 auto; padding: 40px 16px 32px; }
+  .panel { min-height: 0; padding: 32px; }
+  .panel h1 { font-size: 22px; margin-bottom: 20px; letter-spacing: -.015em; }
+  .tiles { display: flex; gap: 10px; }
+  .tiles span { flex: 1; height: 112px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); font: 600 clamp(48px, 14vw, 72px)/1 var(--mono); }
+  .row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  .hint { color: var(--tx-2); margin-top: 20px; }
+  .status { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--tx-2); }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--ac); flex: none; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .bar-ind { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; margin-top: 8px; position: relative; }
+  .bar-ind::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 35%; background: var(--ac); animation: slide 1.3s ease-in-out infinite; }
+  @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 
-  /* ── Buttons ── */
-  button {
-    font-family: var(--sans); font-size: 14px; font-weight: 550;
-    border-radius: var(--radius-sm); cursor: pointer;
-    border: 1px solid var(--field-border);
-    background: var(--field);
-    color: var(--text);
-    padding: 10px 18px;
-    transition: border-color .15s, background .15s, transform .12s;
-  }
-  button:hover:not(:disabled) { border-color: var(--accent-line); }
-  button:active:not(:disabled) { transform: translateY(1px); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  button.primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: var(--on-accent);
-    border-color: transparent; font-weight: 650;
-    box-shadow: 0 10px 24px var(--accent-soft);
-  }
-  button.primary:hover:not(:disabled) { filter: brightness(1.06); }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sess { height: 100dvh; display: flex; flex-direction: column; }
+  .sbar { flex: none; min-height: 56px; border-bottom: 1px solid var(--line); background: var(--bg); }
+  .sbar .in { max-width: 780px; margin: 0 auto; min-height: 56px; padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .route { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; font-weight: 560; min-width: 0; }
+  #routeText { white-space: nowrap; }
+  .route .note { color: var(--tx-3); font-weight: 400; font-size: 13px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+  .dot.warn { background: var(--warn); }
+  .dot.off { background: var(--tx-3); }
+  .feed { flex: 1; min-height: 0; overflow: auto; padding: 20px 16px; }
+  .list { max-width: 748px; margin: 0 auto; display: flex; flex-direction: column; gap: 8px; min-height: 100%; justify-content: flex-end; }
+  .sys { align-self: center; color: var(--tx-3); font-size: 12.5px; padding: 4px 0 8px; }
+  .empty { align-self: center; text-align: center; color: var(--tx-2); margin: auto 0; padding: 24px 0; }
+  .m { max-width: 78%; padding: 9px 14px; border-radius: 18px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .m.me { align-self: flex-end; background: var(--ac); color: var(--on-ac); border-bottom-right-radius: 6px; }
+  .m.peer { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+  .f { width: min(360px, 88%); display: flex; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+  .f.me { align-self: flex-end; }
+  .f.peer { align-self: flex-start; }
+  .ext { flex: none; width: 42px; height: 42px; border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); display: grid; place-items: center; font: 600 11px var(--mono); color: var(--tx-2); }
+  .fb { flex: 1; min-width: 0; }
+  .fn { font-weight: 560; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fm { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--tx-3); margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .fm .ok { color: var(--ok); }
+  .fm a { color: var(--ac); }
+  .prog { height: 4px; border-radius: 2px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .prog i { display: block; height: 100%; width: 0; background: var(--ac); border-radius: 2px; }
+  .comp { flex: none; border-top: 1px solid var(--line); background: var(--bg); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .comp form { max-width: 748px; margin: 0 auto; display: flex; gap: 8px; align-items: center; }
+  .ibtn { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--panel); display: grid; place-items: center; color: var(--tx-2); padding: 0; }
+  .ibtn:hover { background: var(--sunk); }
+  .ibtn:disabled { opacity: .45; cursor: not-allowed; }
+  .comp input { flex: 1; min-width: 0; height: 46px; border-radius: 23px; border: 1px solid var(--line-2); background: var(--panel); padding: 0 18px; color: var(--tx); }
+  .comp input:focus { outline: none; border-color: var(--ac); box-shadow: 0 0 0 4px var(--ac-soft); }
+  .comp input:disabled { opacity: .6; }
+  .comp .btn { border-radius: 23px; height: 46px; }
 
-  /* ── Role picker ── */
-  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .role-card {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
-    text-align: left; padding: 22px; border-radius: var(--radius-sm);
-    background: var(--field); border: 1px solid var(--field-border);
-  }
-  .role-card:hover { border-color: var(--accent-line); background: var(--accent-soft); }
-  .role-card .r-icon {
-    display: grid; place-items: center;
-    width: 40px; height: 40px; border-radius: 12px;
-    background: linear-gradient(140deg, var(--accent), var(--accent-2));
-    color: #fff; font-size: 18px;
-  }
-  .role-card .r-title { font-size: 15px; font-weight: 700; }
-  .role-card .r-sub { font-size: 12.5px; color: var(--text-2); line-height: 1.5; font-weight: 400; }
+  .ov { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; text-align: center; padding: 16px; background: color-mix(in srgb, var(--bg) 93%, transparent); }
+  .ov.show { display: grid; }
+  .ov::before { content: ""; position: absolute; inset: 16px; border: 2px dashed var(--ac); border-radius: 22px; background: var(--ac-soft); opacity: .55; }
+  .ov div { position: relative; }
+  .ov b { display: block; font-size: 30px; letter-spacing: -.02em; font-weight: 650; }
+  .ov span { display: block; color: var(--tx-2); margin-top: 6px; }
 
-  /* ── Connection code ── */
-  .code-cells { display: flex; gap: 10px; justify-content: center; margin: 10px 0 4px; }
-  .code-cell, .code-cell-input {
-    width: 64px; height: 78px;
-    font-family: var(--mono); font-size: 36px; font-weight: 700;
-    text-align: center; text-transform: uppercase;
-    background: var(--field);
-    border: 1.5px solid var(--field-border);
-    border-radius: var(--radius-sm);
+  @media (max-width: 760px) {
+    .cols { grid-template-columns: minmax(0, 1fr); }
+    .top { padding: 0 16px; }
+    .home { padding: 28px 16px 24px; }
+    .card { padding: 22px; min-height: 0; }
+    .card .grow { min-height: 20px; }
+    .panel { padding: 24px 20px; }
+    .m { max-width: 86%; }
+    .code input { height: 68px; font-size: 32px; }
   }
-  .code-cell {
-    display: grid; place-items: center; line-height: 1;
-    background: linear-gradient(140deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-    box-shadow: 0 12px 28px var(--accent-soft), var(--inset-hi);
-  }
-  #codeOut.ready .code-cell { animation: pop .28s ease both; }
-  #codeOut.ready .code-cell:nth-child(2) { animation-delay: .05s; }
-  #codeOut.ready .code-cell:nth-child(3) { animation-delay: .1s; }
-  #codeOut.ready .code-cell:nth-child(4) { animation-delay: .15s; }
-  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-
-  .code-cell-input { color: var(--text); caret-color: var(--accent); padding: 0; }
-  .code-cell-input:focus {
-    outline: none; border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-soft);
-  }
-  .code-cells.shake { animation: shake .4s; }
-  @keyframes shake { 10%,90%{transform:translateX(-2px)} 30%,70%{transform:translateX(5px)} 50%{transform:translateX(-6px)} }
-
-  .code-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 22px; flex-wrap: wrap; }
-  .copy-btn { display: inline-flex; align-items: center; gap: 7px; }
-  .copy-btn.copied { color: var(--ok); border-color: var(--ok-soft); }
-
-  .backlink {
-    display: inline-block; margin-top: 18px;
-    background: none; border: none;
-    color: var(--dim); font-size: 12.5px; padding: 4px 2px;
-  }
-  .backlink:hover { color: var(--accent); border: none; }
-
-  /* ── Chat ── */
-  #chatLog {
-    height: 340px; overflow-y: auto;
-    background: var(--field);
-    border: 1px solid var(--field-border);
-    border-radius: var(--radius-sm);
-    padding: 16px;
-    display: flex; flex-direction: column; gap: 10px;
-    margin-bottom: 14px;
-  }
-  #chatLog::-webkit-scrollbar { width: 8px; }
-  #chatLog::-webkit-scrollbar-thumb { background: var(--field-border); border-radius: 4px; }
-
-  .msg {
-    max-width: 78%; padding: 9px 13px; border-radius: var(--radius-sm);
-    font-size: 14px; line-height: 1.55; word-break: break-word; white-space: pre-wrap;
-  }
-  .msg.me {
-    align-self: flex-end;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: var(--on-accent);
-    border-bottom-right-radius: 5px;
-  }
-  .msg.peer {
-    align-self: flex-start; background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
-    border-bottom-left-radius: 5px;
-  }
-  .msg.sys {
-    align-self: center; color: var(--dim); font-size: 11.5px;
-    font-family: var(--mono); background: none; padding: 2px 8px; max-width: 100%;
-  }
-
-  .file-card { display: flex; align-items: center; gap: 12px; min-width: 210px; }
-  .file-card .f-icon {
-    display: grid; place-items: center; flex-shrink: 0;
-    width: 38px; height: 38px; border-radius: var(--radius-sm);
-    background: var(--accent-soft); font-size: 19px;
-  }
-  .msg.me .file-card .f-icon { background: rgba(255,255,255,.25); }
-  .file-card .f-body { flex: 1; min-width: 0; }
-  .file-card .f-name { font-size: 13.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .file-card .f-label { font-size: 11.5px; opacity: .82; margin-top: 2px; }
-  .file-card .f-label a { color: inherit; font-weight: 600; text-decoration: underline; }
-  .msg.peer .file-card .f-label a { color: var(--accent); }
-  .progress { height: 5px; border-radius: 3px; margin-top: 7px; overflow: hidden; background: var(--field-border); }
-  .msg.me .progress { background: rgba(255,255,255,.3); }
-  .progress > div { height: 100%; width: 0%; background: var(--accent); border-radius: 3px; transition: width .12s; }
-  .msg.me .progress > div { background: var(--on-accent); }
-
-  /* ── Composer (floating glass pill) ── */
-  #composer {
-    display: flex; gap: 8px; align-items: flex-end;
-    background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
-    border-radius: 22px; padding: 6px 6px 6px 8px;
-    box-shadow: var(--inset-hi);
-  }
-  .icon-btn {
-    display: grid; place-items: center; flex-shrink: 0;
-    width: 40px; height: 40px; padding: 0; font-size: 17px; border-radius: 50%;
-    background: transparent; border: none; color: var(--text-2);
-  }
-  .icon-btn:hover { color: var(--accent); background: var(--accent-soft); }
-  #chatInput {
-    flex: 1; min-width: 0;
-    background: transparent; border: none;
-    color: var(--text);
-    padding: 9px 4px; font-size: 14px; font-family: var(--sans);
-    line-height: 1.4; resize: none;
-    field-sizing: content; max-height: 120px; overflow-y: auto;
-  }
-  #chatInput:focus { outline: none; }
-  #sendBtn { height: 38px; border-radius: 999px; }
-  .composer-hint { color: var(--dim); font-size: 12px; margin-top: 14px; text-align: center; }
-  .composer-hint b { color: var(--text-2); font-weight: 600; }
-
-  /* ── Full-window drop overlay ── */
-  #dropOverlay {
-    position: fixed; inset: 0; z-index: 50;
-    display: grid; place-items: center;
-    background: rgba(10, 11, 20, .38);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    opacity: 0; pointer-events: none; transition: opacity .18s;
-  }
-  #dropOverlay.show { opacity: 1; }
-  #dropOverlay .drop-inner {
-    display: flex; flex-direction: column; align-items: center; gap: 14px;
-    padding: 44px 60px; border-radius: 28px;
-    background: var(--glass-bg-strong); border: 1.5px dashed var(--accent);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    box-shadow: var(--shadow-lg);
-    color: var(--accent); font-size: 17px; font-weight: 600;
-    transform: scale(.96); transition: transform .18s;
-  }
-  #dropOverlay.show .drop-inner { transform: scale(1); }
-  #dropOverlay .drop-icon { font-size: 44px; line-height: 1; }
-  #dropOverlay .drop-sub { color: var(--text-2); font-size: 13px; font-weight: 400; }
-
-  @media (max-width: 560px) {
-    body { padding: 32px 14px 48px; }
-    .card { padding: 22px; }
-    .role-grid { grid-template-columns: 1fr; }
-    .code-cell, .code-cell-input { width: 54px; height: 68px; font-size: 30px; }
-    .step { width: 68px; }
-    .step-line { width: 24px; }
-    .step-label { font-size: 10px; }
-  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<div class="bg-blobs" aria-hidden="true"><span></span><span></span><span></span></div>
-<div class="wrap">
-  <header>
+<div id="plain">
+  <header class="top">
     <div class="brand">
-      <span class="mark">⇄</span>
-      <span><span class="peer">Peer</span><span class="drop">Drop</span></span>
+      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="7" cy="11" r="5" fill="none" stroke="var(--tx)" stroke-width="2"/><circle cx="15" cy="11" r="5" fill="var(--ac)"/></svg>
+      PeerDrop
     </div>
-    <p>WebRTC 点对点直连 · 聊天与文件传输<br>直连优先，打洞失败自动降级为 Cloudflare TURN 加密中继</p>
   </header>
 
-  <div class="steps" aria-hidden="true">
-    <div class="step" data-step="1">
-      <span class="step-dot">1</span>
-      <span class="step-label">选择角色</span>
+  <main id="home" class="home">
+    <h1>两台设备之间传文件和消息，不用登录。</h1>
+    <div class="cols">
+      <section class="card" id="sendCard">
+        <h2>发送</h2>
+        <p class="d">生成连接码，告诉对方</p>
+        <div class="grow"></div>
+        <button class="btn pri wide normal" id="genBtn" onclick="startAsOfferer()">生成连接码</button>
+        <div class="fatal"><p class="emsg" aria-live="polite"></p><button class="btn wide" onclick="resetApp()">返回首页</button></div>
+      </section>
+      <section class="card">
+        <h2>接收</h2>
+        <p class="d">输入对方给你的 4 位连接码</p>
+        <div class="grow"></div>
+        <div class="code" id="codeInGroup">
+          <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="连接码第 1 位">
+          <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="连接码第 2 位">
+          <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="连接码第 3 位">
+          <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="连接码第 4 位">
+        </div>
+        <p class="emsg" id="recvErr" aria-live="polite" hidden></p>
+        <div class="actions">
+          <button class="btn wide" id="connectBtn" onclick="connectWithCode()">连接</button>
+          <button class="btn wide" id="retryBtn" onclick="retryRecv()" hidden>重新输入</button>
+        </div>
+      </section>
     </div>
-    <span class="step-line"></span>
-    <div class="step" data-step="2">
-      <span class="step-dot">2</span>
-      <span class="step-label">建立连接</span>
-    </div>
-    <span class="step-line"></span>
-    <div class="step" data-step="3">
-      <span class="step-dot">3</span>
-      <span class="step-label">传输</span>
-    </div>
-  </div>
+    <p class="foot">文件在两台设备之间直接传输。直连不通时经 Cloudflare 中继，全程端到端加密，服务器看不到内容。</p>
+  </main>
 
-  <div id="statusBar">
-    <div class="dot" id="statusDot"></div>
-    <span id="statusText">未连接 — 请先选择角色</span>
-  </div>
+  <main id="waiting" class="center" hidden>
+    <section class="card panel" id="waitCard">
+      <h1>把连接码告诉对方</h1>
+      <div class="normal">
+        <div class="tiles" id="codeOut"></div>
+        <div class="row">
+          <button class="btn" id="copyBtn" onclick="copyCode()"><span id="copyLabel">复制</span></button>
+          <button class="btn ghost" onclick="resetApp()">取消</button>
+        </div>
+        <p class="hint">对方打开 drop.zhoupb.com，在「接收」里输入。10 分钟内有效。</p>
+        <div class="status"><i class="pulse"></i><span id="waitStatus" aria-live="polite">等待对方加入…</span></div>
+      </div>
+      <div class="fatal"><p class="emsg" aria-live="polite"></p><button class="btn wide" onclick="resetApp()">返回首页</button></div>
+    </section>
+  </main>
 
-  <!-- 步骤 0：选择角色 -->
-  <div class="card" id="roleSelect">
-    <h2>这台电脑是哪一方？</h2>
-    <p class="sub">发起方生成一个 4 位连接码，接收方输入即可自动建立直连。</p>
-    <div class="role-grid">
-      <button class="role-card" onclick="startAsOfferer()">
-        <span class="r-icon">↑</span>
-        <span class="r-title">我是发起方</span>
-        <span class="r-sub">生成连接码，等对方加入</span>
-      </button>
-      <button class="role-card" onclick="startAsAnswerer()">
-        <span class="r-icon">↓</span>
-        <span class="r-title">我是接收方</span>
-        <span class="r-sub">输入对方给我的连接码</span>
-      </button>
-    </div>
-  </div>
+  <main id="connecting" class="center" hidden>
+    <section class="card panel" id="connCard">
+      <h1 class="when-ok" aria-live="polite">已找到对方，正在连接…</h1>
+      <div class="normal">
+        <div class="bar-ind"></div>
+        <div class="row"><button class="btn ghost" onclick="resetApp()">取消</button></div>
+      </div>
+      <div class="fatal"><p class="emsg" aria-live="polite"></p><button class="btn wide" onclick="resetApp()">返回首页</button></div>
+    </section>
+  </main>
+</div>
 
-  <!-- 发起方：展示 4 位码 -->
-  <div class="card hidden" id="offererPanel">
-    <h2>把这个连接码告诉对方</h2>
-    <p class="sub">对方打开同一页面，选「我是接收方」并输入此码即可。10 分钟内有效。</p>
-    <div class="code-cells" id="codeOut"></div>
-    <div class="code-actions">
-      <button class="copy-btn" id="copyBtn" onclick="copyCode()"><span>⧉</span><span id="copyLabel">复制连接码</span></button>
+<div id="session" class="sess" hidden>
+  <header class="sbar">
+    <div class="in">
+      <div class="route" aria-live="polite"><i class="dot" id="dot"></i><span id="routeText">已连接</span><span class="note" id="routeNote" hidden>端到端加密</span></div>
+      <button class="btn sm" id="endBtn" onclick="resetApp()">断开</button>
     </div>
-    <div style="text-align:center"><button class="backlink" onclick="resetApp()">← 换一种角色</button></div>
-  </div>
-
-  <!-- 接收方：输入 4 位码 -->
-  <div class="card hidden" id="answererPanel">
-    <h2>输入对方给你的 4 位连接码</h2>
-    <p class="sub">逐格输入即可，填满后自动连接。也可以直接粘贴。</p>
-    <div class="code-cells" id="codeInGroup">
-      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 1 位">
-      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 2 位">
-      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 3 位">
-      <input class="code-cell-input" maxlength="1" inputmode="text" autocomplete="off" spellcheck="false" aria-label="连接码第 4 位">
-    </div>
-    <div class="code-actions">
-      <button class="primary" onclick="connectWithCode()">连接</button>
-    </div>
-    <div style="text-align:center"><button class="backlink" onclick="resetApp()">← 换一种角色</button></div>
-  </div>
-
-  <!-- 聊天 + 文件传输 -->
-  <div class="card hidden" id="chatPanel">
-    <h2>直连会话</h2>
-    <div id="chatLog"></div>
-    <div id="composer">
-      <button class="icon-btn" id="attachBtn" title="发送文件" aria-label="发送文件">📎</button>
-      <textarea id="chatInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行…" rows="1"
-             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
-      <button class="primary" id="sendBtn" onclick="sendChat()">发送</button>
-    </div>
-    <p class="composer-hint">把文件拖到窗口<b>任意位置</b>即可发送，或点击 <b>📎</b> 选择文件</p>
-    <input type="file" id="fileInput" class="hidden" multiple>
+  </header>
+  <main class="feed" id="feed">
+    <div class="list" id="chatLog"><div class="empty" id="emptyHint">发条消息，或把文件拖进来。</div></div>
+  </main>
+  <div class="comp">
+    <form id="composer">
+      <button type="button" class="ibtn" id="attachBtn" aria-label="发送文件"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7-7l9-9a3.3 3.3 0 0 1 4.7 4.7l-9 9a1.7 1.7 0 0 1-2.4-2.4l8.3-8.3"/></svg></button>
+      <input type="text" id="chatInput" placeholder="输入消息" autocomplete="off" enterkeyhint="send">
+      <button class="btn pri" id="sendBtn" type="submit">发送</button>
+    </form>
+    <input type="file" id="fileInput" hidden multiple>
   </div>
 </div>
 
 <!-- 拖拽文件时全窗口提示 -->
-<div id="dropOverlay">
-  <div class="drop-inner">
-    <div class="drop-icon">⬇</div>
-    <div>松开即可发送文件</div>
-    <div class="drop-sub">通过 P2P 直连传给对方，不经过服务器</div>
-  </div>
-</div>
+<div id="dropOverlay" class="ov"><div><b>松开即可发送</b><span>可以一次发多个文件</span></div></div>
 
 <script>
 'use strict';
@@ -518,6 +275,10 @@ let myCode = '';        // 发起方生成的连接码
 let connecting = false; // 接收方是否已发起连接，避免重复触发
 const sendQueue = [];
 let sendingFiles = false;
+let sessionStarted = false; // 会话是否已经建立过（会话初始化只做一次）
+let sessionEnded = false;   // 会话是否已结束
+let route = null;           // { name, relayed }
+let screen = 'home';        // home | waiting | connecting | session
 
 const $ = id => document.getElementById(id);
 
@@ -585,10 +346,14 @@ async function createPeer(code) {
   pc = new RTCPeerConnection({ iceServers });
   pc.onconnectionstatechange = () => {
     const s = pc.connectionState;
-    if (s === 'connecting') setStatus('connecting', '正在打洞连接…');
-    else if (s === 'connected') onConnected();
-    else if (s === 'failed') setStatus('failed', '连接失败 — 打洞与 TURN 中继均不通，检查网络是否拦截 UDP/TCP/TLS');
-    else if (s === 'disconnected' || s === 'closed') setStatus('failed', '连接已断开');
+    if (s === 'connected') {
+      if (sessionStarted) showConnectedBar(); else onConnected();
+    } else if (s === 'disconnected') {
+      if (sessionStarted && !sessionEnded) setBar('连接中断，正在重试…', 'warn', false);
+    } else if (s === 'failed' || s === 'closed') {
+      if (sessionStarted) endSession();
+      else if (s === 'failed') showFatal('连接失败。网络可能拦截了 UDP、TCP 和 TLS，换个网络试试。');
+    }
   };
 }
 
@@ -627,15 +392,14 @@ async function signalGet(code, slot) {
 }
 
 async function startAsOfferer() {
-  $('roleSelect').classList.add('hidden');
-  $('offererPanel').classList.remove('hidden');
-  renderCode('····', false);
+  $('genBtn').disabled = true;
+  $('genBtn').textContent = '正在生成…';
   let code;
   try {
     const r = await fetch(`${SIGNAL}/room`, { method: 'POST' });
     if (!r.ok) throw signalError(r.status);
     code = await r.text();
-  } catch { return setStatus('failed', '信令服务器连不上 — 确认服务已部署、/api 可达'); }
+  } catch { return showFatal('服务器暂时连不上，稍后再试。'); }
   await createPeer(code);
   dc = pc.createDataChannel('main');
   setupChannel(dc);
@@ -645,26 +409,24 @@ async function startAsOfferer() {
   await waitIceComplete();
 
   try { await signalPut(code, 'offer', compressSDP(pc.localDescription)); }
-  catch { return setStatus('failed', '信令服务器连不上 — 确认服务已部署、/api 可达'); }
+  catch { return showFatal('服务器暂时连不上，稍后再试。'); }
 
   myCode = code;
-  renderCode(code, true);
-  setStatus('connecting', '等待对方输入连接码…');
+  renderCode(code);
+  show('waiting');
 
   // 轮询应答，最多等 10 分钟（与房间 TTL 一致）
   for (let i = 0; i < 400; i++) {
     await new Promise(r => setTimeout(r, 1500));
     if (pc.remoteDescription) return;   // 应答已设置，交给状态机
     const answer = await signalGet(code, 'answer').catch(() => null);
-    if (answer) { await pc.setRemoteDescription(expandSDP(answer)); return; }
+    if (answer) {
+      await pc.setRemoteDescription(expandSDP(answer));
+      $('waitStatus').textContent = '对方已加入，正在连接…';
+      return;
+    }
   }
-  setStatus('failed', '等待超时 — 刷新页面重新生成连接码');
-}
-
-function startAsAnswerer() {
-  $('roleSelect').classList.add('hidden');
-  $('answererPanel').classList.remove('hidden');
-  codeCells[0].focus();
+  showFatal('连接码已过期，回到首页重新生成。');
 }
 
 async function connectWithCode() {
@@ -674,22 +436,19 @@ async function connectWithCode() {
 
   connecting = true;
   setInputsDisabled(true);
-  setStatus('connecting', '取回对方握手信息…');
   let offerCode;
   try { offerCode = await signalGet(code, 'offer'); }
   catch {
     connecting = false;
-    setInputsDisabled(false);
-    return setStatus('failed', '信令服务器暂时连不上 — 稍等一会儿再试');
+    return recvError('服务器暂时连不上，稍后再试。');
   }
   if (!offerCode) {
     connecting = false;
-    setInputsDisabled(false);
     shakeCode();
-    setStatus('failed', '没找到这个连接码 — 确认输入正确，且对方仍在等待');
-    return;
+    return recvError('没找到这个连接码。检查一下，或让对方重新生成。');
   }
 
+  show('connecting');
   await createPeer(code);
   pc.ondatachannel = e => { dc = e.channel; setupChannel(dc); };
 
@@ -700,36 +459,35 @@ async function connectWithCode() {
 
   try { await signalPut(code, 'answer', compressSDP(pc.localDescription)); }
   catch (error) {
-    return setStatus('failed', error.status === 409
-      ? '这个连接码已被别人使用 — 请让对方重新生成'
-      : '信令服务器连不上，应答发送失败');
+    return recvError(error.status === 409
+      ? '这个连接码已被别人使用，请让对方重新生成。'
+      : '服务器暂时连不上，稍后再试。');
   }
-  setStatus('connecting', '应答已送达，正在打洞直连…');
 }
 
 function onConnected() {
-  setStatus('connected', '已直连 ✓ 数据不经过任何服务器');
-  $('offererPanel').classList.add('hidden');
-  $('answererPanel').classList.add('hidden');
-  $('chatPanel').classList.remove('hidden');
+  sessionStarted = true;
+  show('session');
+  showConnectedBar();
   $('chatInput').focus();
-  logSys('P2P 连接已建立');
-  // 显示实际连接路径：局域网直连 / 公网直连（IPv6 或公网 IP，免打洞）/ NAT 打洞 / TURN 中继
+  // 显示实际连接路径：局域网直连 / 公网直连 / Cloudflare 中继
   pc.getStats().then(stats => {
     stats.forEach(r => {
-      if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) {
-        const local = stats.get(r.localCandidateId);
-        if (!local) return;
-        // 浏览器可能因 mDNS 隐私保护隐藏 host 候选地址，空地址按局域网处理
-        const addr = local.address || '';
-        const isLan = !addr || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|f[cde])/i.test(addr) || addr.endsWith('.local');
-        const kind =
-          local.candidateType === 'relay' ? 'TURN 中继' :
-          local.candidateType !== 'host'  ? 'NAT 打洞' :
-          isLan ? '局域网直连' : '公网直连（免打洞）';
-        logSys(`本机出口: ${kind}${addr ? ` (${addr.includes(':') ? '[' + addr + ']' : addr}:${local.port || ''})` : ''}`);
-        if (local.candidateType === 'relay') setStatus('connected', '已连接 ✓ 打洞未成，经 Cloudflare TURN 中继（DTLS 端到端加密）');
-      }
+      if (route || r.type !== 'candidate-pair' || r.state !== 'succeeded' || !r.nominated) return;
+      const local = stats.get(r.localCandidateId);
+      if (!local) return;
+      const remote = stats.get(r.remoteCandidateId);
+      // 浏览器可能因 mDNS 隐私保护隐藏 host 候选地址，空地址按局域网处理
+      const addr = local.address || '';
+      const isLan = !addr || /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.|f[cde])/i.test(addr) || addr.endsWith('.local');
+      const relayed = local.candidateType === 'relay' || remote?.candidateType === 'relay';
+      const name =
+        relayed ? '经 Cloudflare 中继' :
+        local.candidateType !== 'host' ? '公网直连' :
+        isLan ? '局域网直连' : '公网直连';
+      route = { name, relayed };
+      logSys(relayed ? `${name} · 端到端加密` : name);
+      if (!sessionEnded) showConnectedBar();
     });
   }).catch(() => {});
 }
@@ -749,7 +507,7 @@ function setupChannel(channel) {
       receiveChunk(e.data);
     }
   };
-  channel.onclose = () => logSys('通道已关闭');
+  channel.onclose = () => { if (sessionStarted) endSession(); };
 }
 
 // ───────────────────────── 聊天 ─────────────────────────
@@ -796,10 +554,10 @@ async function sendFile(file) {
     const chunk = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
     dc.send(chunk);
     offset += chunk.byteLength;
-    card.progress.style.width = (offset / file.size * 100) + '%';
+    card.set(offset);
   }
   dc.send(JSON.stringify({ type: 'file-end' }));
-  card.label.textContent = `已发送 · ${fmtSize(file.size)}`;
+  card.done();
 }
 
 // ───────────────────────── 文件接收 ─────────────────────────
@@ -817,7 +575,7 @@ function receiveChunk(buf) {
   if (!incoming) return;
   incoming.chunks.push(buf);
   incoming.received += buf.byteLength;
-  incoming.card.progress.style.width = (incoming.received / incoming.meta.size * 100) + '%';
+  incoming.card.set(incoming.received);
 }
 
 function finishReceiveFile() {
@@ -827,80 +585,142 @@ function finishReceiveFile() {
   const a = document.createElement('a');
   a.href = url;
   a.download = incoming.meta.name;
-  a.textContent = '点击保存';
-  incoming.card.label.textContent = `接收完成 · ${fmtSize(incoming.meta.size)} · `;
-  incoming.card.label.appendChild(a);
+  a.textContent = '保存';
+  incoming.card.done(a);
   incoming = null;
 }
 
-// ───────────────────────── UI 工具 ─────────────────────────
+// ───────────────────────── UI ─────────────────────────
 
-function setStatus(cls, text) {
-  const dot = $('statusDot');
-  dot.className = 'dot ' + cls;
-  $('statusText').textContent = text;
+const SCREEN_CARD = { home: 'sendCard', waiting: 'waitCard', connecting: 'connCard' };
+
+function show(name) {
+  screen = name;
+  $('plain').hidden = name === 'session';
+  for (const id of ['home', 'waiting', 'connecting', 'session']) $(id).hidden = id !== name;
+  window.scrollTo(0, 0);
+}
+
+// 连接建立前的致命错误：显示在当前屏幕的卡片里，附「返回首页」
+function showFatal(text) {
+  const card = $(SCREEN_CARD[screen]);
+  card.querySelector('.fatal .emsg').textContent = text;
+  card.classList.add('failed');
+}
+
+// 接收方错误：回到首页，显示在输入框下面
+function recvError(text) {
+  show('home');
+  $('codeInGroup').classList.add('err');
+  $('recvErr').textContent = text;
+  $('recvErr').hidden = false;
+  $('connectBtn').hidden = true;
+  $('retryBtn').hidden = false;
+}
+
+function retryRecv() {
+  if (pc) { pc.close(); pc = null; }
+  connecting = false;
+  codeCells.forEach(c => { c.value = ''; });
+  setInputsDisabled(false);
+  $('codeInGroup').classList.remove('err');
+  $('recvErr').hidden = true;
+  $('retryBtn').hidden = true;
+  $('connectBtn').hidden = false;
+  codeCells[0].focus();
+}
+
+function setBar(text, cls, note) {
+  $('routeText').textContent = text;
+  $('dot').className = 'dot' + (cls ? ' ' + cls : '');
+  $('routeNote').hidden = !note;
+}
+
+function showConnectedBar() {
+  setBar(route ? '已连接 · ' + route.name : '已连接', '', route?.relayed);
+}
+
+function endSession() {
+  if (sessionEnded) return;
+  sessionEnded = true;
+  setBar('已断开', 'off', false);
+  logSys('连接已断开');
+  $('endBtn').textContent = '返回首页';
+  $('chatInput').disabled = true;
+  $('sendBtn').disabled = true;
+  $('attachBtn').disabled = true;
 }
 
 function addMsg(text, who) {
   const div = document.createElement('div');
-  div.className = 'msg ' + who;
+  div.className = 'm ' + who;
   div.textContent = text;
   appendLog(div);
 }
 
 function logSys(text) {
   const div = document.createElement('div');
-  div.className = 'msg sys';
-  div.textContent = '· ' + text + ' ·';
+  div.className = 'sys';
+  div.textContent = text;
   appendLog(div);
+}
+
+function fileExt(name) {
+  const i = name.lastIndexOf('.');
+  return i > 0 && i < name.length - 1 ? name.slice(i + 1, i + 5).toUpperCase() : 'FILE';
 }
 
 function addFileCard(name, size, who) {
   const div = document.createElement('div');
-  div.className = 'msg ' + who;
+  div.className = 'f ' + who;
 
-  const card = document.createElement('div');
-  card.className = 'file-card';
-
-  const icon = document.createElement('div');
-  icon.className = 'f-icon';
-  icon.textContent = fileIcon(name);
+  const ext = document.createElement('div');
+  ext.className = 'ext';
+  ext.textContent = fileExt(name);
 
   const body = document.createElement('div');
-  body.className = 'f-body';
+  body.className = 'fb';
   const title = document.createElement('div');
-  title.className = 'f-name';
+  title.className = 'fn';
   title.textContent = name;
-  const label = document.createElement('div');
-  label.className = 'f-label';
-  label.textContent = fmtSize(size);
+  const meta = document.createElement('div');
+  meta.className = 'fm';
+  const left = document.createElement('span');
+  const right = document.createElement('span');
+  meta.append(left, right);
   const progress = document.createElement('div');
-  progress.className = 'progress';
-  const bar = document.createElement('div');
+  progress.className = 'prog';
+  const bar = document.createElement('i');
   progress.appendChild(bar);
 
-  body.append(title, label, progress);
-  card.append(icon, body);
-  div.appendChild(card);
+  body.append(title, meta, progress);
+  div.append(ext, body);
   appendLog(div);
-  return { label, progress: bar };
-}
 
-function fileIcon(name) {
-  const ext = (name.split('.').pop() || '').toLowerCase();
-  if (['png','jpg','jpeg','gif','webp','svg','bmp','heic'].includes(ext)) return '🖼️';
-  if (['mp4','mov','avi','mkv','webm'].includes(ext)) return '🎬';
-  if (['mp3','wav','flac','aac','ogg','m4a'].includes(ext)) return '🎵';
-  if (['zip','rar','7z','tar','gz'].includes(ext)) return '🗜️';
-  if (['pdf'].includes(ext)) return '📕';
-  if (['doc','docx','txt','md','rtf'].includes(ext)) return '📝';
-  return '📄';
+  const card = {
+    set(done) {
+      const pct = size ? Math.floor(done / size * 100) : 100;
+      left.textContent = `${fmtSize(done)} / ${fmtSize(size)}`;
+      right.textContent = `${who === 'me' ? '发送中' : '接收中'} · ${pct}%`;
+      bar.style.width = (size ? done / size * 100 : 100) + '%';
+    },
+    done(link) {
+      left.textContent = fmtSize(size);
+      right.textContent = who === 'me' ? '已发送' : '已接收';
+      right.classList.add('ok');
+      if (link) right.append(' · ', link);
+      progress.remove();
+    }
+  };
+  card.set(0);
+  return card;
 }
 
 function appendLog(el) {
   const log = $('chatLog');
-  log.appendChild(el);
-  log.scrollTop = log.scrollHeight;
+  if (!el.classList.contains('sys')) $('emptyHint')?.remove();
+  log.insertBefore(el, $('emptyHint'));
+  $('feed').scrollTop = $('feed').scrollHeight;
 }
 
 function fmtSize(n) {
@@ -912,16 +732,14 @@ function fmtSize(n) {
 
 // ── 连接码 UI ──
 
-function renderCode(str, ready) {
+function renderCode(str) {
   const out = $('codeOut');
   out.innerHTML = '';
   for (const ch of str.split('')) {
-    const cell = document.createElement('div');
-    cell.className = 'code-cell';
+    const cell = document.createElement('span');
     cell.textContent = ch;
     out.appendChild(cell);
   }
-  out.classList.toggle('ready', !!ready);
 }
 
 function copyCode() {
@@ -929,8 +747,8 @@ function copyCode() {
   navigator.clipboard.writeText(myCode).then(() => {
     const btn = $('copyBtn');
     btn.classList.add('copied');
-    $('copyLabel').textContent = '已复制 ✓';
-    setTimeout(() => { btn.classList.remove('copied'); $('copyLabel').textContent = '复制连接码'; }, 1600);
+    $('copyLabel').textContent = '已复制';
+    setTimeout(() => { btn.classList.remove('copied'); $('copyLabel').textContent = '复制'; }, 1600);
   }).catch(() => {});
 }
 
@@ -942,6 +760,8 @@ function getInputCode() {
 
 function setInputsDisabled(disabled) {
   codeCells.forEach(c => { c.disabled = disabled; });
+  $('connectBtn').disabled = disabled;
+  $('connectBtn').textContent = disabled ? '正在查找…' : '连接';
 }
 
 function shakeCode() {
@@ -975,7 +795,6 @@ codeCells.forEach((cell, i) => {
 function resetApp() {
   location.reload();
 }
-
 // ── 文件选择 / 拖拽 ──
 
 const fileInput = $('fileInput');
@@ -985,6 +804,8 @@ fileInput.addEventListener('change', () => {
   queueFiles(fileInput.files);
   fileInput.value = '';
 });
+
+$('composer').addEventListener('submit', e => { e.preventDefault(); sendChat(); });
 
 // 全窗口拖拽：文件拖到页面任意位置都能发送。用计数器抵消子元素反复触发的 enter/leave。
 let dragDepth = 0;
