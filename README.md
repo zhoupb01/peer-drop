@@ -2,7 +2,7 @@
 
 浏览器里点对点传文件、聊天。发起方拿到 4 位连接码，接收方输入即连。数据优先走 WebRTC DataChannel 直连；打不了洞时自动使用 Cloudflare TURN 加密中继。
 
-在线使用：<https://drop.zhoupb.com>
+在线使用：<https://drop.solkoi.com>
 
 ## 特性
 

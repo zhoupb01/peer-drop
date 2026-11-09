@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => ({
       notFoundHandling: 'single-page-application',
       runWorkerFirst: ['/api/*'],
     },
-    domains: ['drop.zhoupb.com'],
+    domains: ['drop.solkoi.com'],
     workersDev: false,
     previewUrls: false,
     observability: {

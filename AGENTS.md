@@ -4,7 +4,7 @@
 
 ## 部署目标
 
-- 站点：`https://drop.zhoupb.com`
+- 站点：`https://drop.solkoi.com`
 - Worker：`peer-drop`
 - Cloudflare 账户：`2e481bb6133d64d883c5515efe3edaa5`
 - 静态页面：`data/index.html`，由 Vite `publicDir` 原样复制，不经过处理
@@ -79,13 +79,13 @@ cf workers deployments create --worker peer-drop --strategy percentage \
 基础接口。房间由 Worker 分配连接码，每个 slot 只能写一次，所以每次验收都新建房间：
 
 ```bash
-curl -fsSI https://drop.zhoupb.com
-curl -fsS https://drop.zhoupb.com/api/healthz
-code="$(curl -fsS -X POST https://drop.zhoupb.com/api/room)"
+curl -fsSI https://drop.solkoi.com
+curl -fsS https://drop.solkoi.com/api/healthz
+code="$(curl -fsS -X POST https://drop.solkoi.com/api/room)"
 curl -fsS -X POST --data 'deploy-test' \
-  "https://drop.zhoupb.com/api/room/$code/offer"
-curl -fsS "https://drop.zhoupb.com/api/room/$code/offer"
-curl -fsS "https://drop.zhoupb.com/api/room/$code/turn"
+  "https://drop.solkoi.com/api/room/$code/offer"
+curl -fsS "https://drop.solkoi.com/api/room/$code/offer"
+curl -fsS "https://drop.solkoi.com/api/room/$code/turn"
 ```
 
 必须确认：
